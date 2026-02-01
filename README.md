@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://files.catbox.moe/973bn4.png" alt="Lumi Banner" />
+  <img src="https://img.sanishtech.com/u/5faa41715ead94e8dec268186620aaac.png" alt="Lumi Banner" />
 </p>
 
 ---
