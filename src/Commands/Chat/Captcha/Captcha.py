@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, TYPE_CHECKING, Dict, Tuple
-
 from Libs import BaseCommand
+from typing import Any, TYPE_CHECKING, Dict, Tuple
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from Commands.ChatCmds.Captcha.Utils import CaptchaUtils
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -25,26 +23,29 @@ class Command(BaseCommand):
             },
         )
 
-    async def exec(self, message: Message, context: Dict[str, Any]) -> None:
-        if not message.is_callback:
+    async def exec(self, M: Message, context: Dict[str, Any]) -> None:
+        if not M.is_callback:
             return
 
         await self.client.bot.delete_message(
-            chat_id=message.chat_id,
-            message_id=message.message_id,
+            chat_id=M.chat_id,
+            message_id=M.message_id,
         )
-
+        loading = await self.client.send_message(
+            chat_id=M.chat_id,
+            text="🔑"
+        )
         flags: Dict[str, Any] = context.get("flags", {})
         user_id: int = int(flags.get("user_id", 0))
 
         if not user_id:
             return
 
-        key: Tuple[int, int] = (message.chat_id, user_id)
+        key: Tuple[int, int] = (M.chat_id, user_id)
         existing: Dict[str, Any] | None = self.client.captcha_store.get(key)
 
-        captcha_code: str = CaptchaUtils.random_text()
-        options: list[str] = CaptchaUtils.captcha_options(captcha_code)
+        captcha_code: str = self.client.utils.random_text()
+        options: list[str] = self.client.utils.captcha_options(captcha_code)
 
         self.client.captcha_store[key] = {
             "code": captcha_code,
@@ -64,17 +65,22 @@ class Command(BaseCommand):
             ]
             for i in range(0, 4, 2)
         ]
-
+        
+        await self.client.bot.delete_message(
+            chat_id=M.chat_id,
+            message_id=loading.message_id,
+        )
+        
         sent_message = await self.client.send_photo(
-            chat_id=message.chat_id,
-            photo=CaptchaUtils.captcha_image(captcha_code),
+            chat_id=M.chat_id,
+            photo=self.client.utils.captcha_image(captcha_code),
             caption="🔐 Solve the captcha within 3 minutes.",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         asyncio.create_task(
             self._expire_after(
-                chat_id=message.chat_id,
+                chat_id=M.chat_id,
                 message_id=sent_message.message_id,
                 user_id=user_id,
             )

@@ -1,9 +1,7 @@
 from __future__ import annotations
-
 import asyncio
-from typing import Any, TYPE_CHECKING, Dict, Tuple
-
 from Libs import BaseCommand
+from typing import Any, TYPE_CHECKING, Dict, Tuple
 from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
 if TYPE_CHECKING:

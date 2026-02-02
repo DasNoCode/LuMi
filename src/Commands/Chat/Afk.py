@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 
@@ -43,9 +44,16 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
+            _, _, tb = sys.exc_info()
+            line_no: int = tb.tb_lineno if tb else -1
+        
             await self.client.send_message(
                 chat_id=M.chat_id,
-                text="❌ Failed to set AFK status.",
+                text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(f"[ERROR] [AFK] {e}")
+            self.client.log.error(
+                "[Afk] line %d: %s",
+                line_no,
+                e,
+            )

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
@@ -14,17 +15,15 @@ class Command(BaseCommand):
             client,
             handler,
             {
-                "command": "demote",
+                "command": "promote",
                 "category": "chat",
                 "description": {
-                    "content": "Demote one or more admins to regular users.",
+                    "content": "Promote one or more users to admin.",
                     "usage": "<@mention> or <reply>",
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
-                "admin_permissions": [
-                    "can_promote_members" 
-                ]
+                "admin_permissions": ["can_promote_members"]
             },
         )
 
@@ -40,7 +39,7 @@ class Command(BaseCommand):
             if not users:
                 await self.client.send_message(
                     chat_id=M.chat_id,
-                    text="❗ Please mention at least one user or reply to their message to demote them.",
+                    text="❗ Please mention at least one user or reply to their message to promote them.",
                     reply_to_message_id=M.message_id,
                 )
                 return
@@ -50,7 +49,7 @@ class Command(BaseCommand):
                 if user.user_id == M.sender.user_id:
                     await self.client.send_message(
                         chat_id=M.chat_id,
-                        text="❌ You can't demote yourself.",
+                        text="❌ You can't promote yourself.",
                         reply_to_message_id=M.message_id,
                     )
                     continue
@@ -61,7 +60,7 @@ class Command(BaseCommand):
                 if member.status == "creator":
                     await self.client.send_message(
                         chat_id=M.chat_id,
-                        text=f"❌ Cannot demote group owner: {user.user_full_name}",
+                        text=f"❌ Cannot promote group owner: {user.user_full_name}",
                         reply_to_message_id=M.message_id,
                     )
                     continue
@@ -69,7 +68,7 @@ class Command(BaseCommand):
                 if user.user_id == M.bot_user_id:
                     await self.client.send_message(
                         chat_id=M.chat_id,
-                        text="❌ I can't demote myself.",
+                        text="❌ I can't promote myself.",
                         reply_to_message_id=M.message_id,
                     )
                     continue
@@ -77,27 +76,34 @@ class Command(BaseCommand):
                 await self.client.bot.promote_chat_member(
                     chat_id=M.chat_id,
                     user_id=user.user_id,
-                    can_change_info=False,
-                    can_post_messages=False,
-                    can_edit_messages=False,
-                    can_delete_messages=False,
-                    can_invite_users=False,
-                    can_restrict_members=False,
-                    can_pin_messages=False,
-                    can_promote_members=False,
+                    can_change_info=True,
+                    can_post_messages=True,
+                    can_edit_messages=True,
+                    can_delete_messages=True,
+                    can_invite_users=True,
+                    can_restrict_members=True,
+                    can_pin_messages=True,
+                    can_promote_members=True,
                     is_anonymous=False,
                 )
 
                 await self.client.send_message(
                     chat_id=M.chat_id,
-                    text=f"✅ Demoted @{user.user_name or user.user_full_name} to regular user.",
+                    text=f"✅ Promoted @{user.user_name or user.user_full_name} to admin!",
                     reply_to_message_id=M.message_id,
                 )
 
         except Exception as e:
+            _, _, tb = sys.exc_info()
+            line_no: int = tb.tb_lineno if tb else -1
+        
             await self.client.send_message(
                 chat_id=M.chat_id,
-                text="❌ Failed to demote user(s).",
+                text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(f"[ERROR] [Demote] {e}")
+            self.client.log.error(
+                "[Promote] line %d: %s",
+                line_no,
+                e,
+            )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import traceback
 from typing import Any, TYPE_CHECKING
 
@@ -103,10 +104,16 @@ class Command(BaseCommand):
                 )
 
         except Exception as e:
+            _, _, tb = sys.exc_info()
+            line_no: int = tb.tb_lineno if tb else -1
+        
             await self.client.send_message(
                 chat_id=M.chat_id,
-                text="❌ An error occurred while getting the rank.",
+                text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,
             )
-            tb: str = traceback.format_exc()
-            self.client.log.error(f"['ERROR'] ['Rank'] \n{tb}")
+            self.client.log.error(
+                "[Rank] line %d: %s",
+                line_no,
+                e,
+            )

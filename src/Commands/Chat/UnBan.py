@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 
@@ -14,15 +15,15 @@ class Command(BaseCommand):
             client,
             handler,
             {
-                "command": "ban",
+                "command": "unban",
                 "category": "chat",
                 "description": {
-                    "content": "Ban one or more users from the chat.",
+                    "content": "unBan one or more users from the chat.",
                     "usage": "<@mention> or <reply>",
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
-                "admin_permissions": ["can_restrict_members"],
+                "admin_permissions": ["can_restrict_members"]
             },
         )
 
@@ -38,48 +39,40 @@ class Command(BaseCommand):
             if not users:
                 await self.client.send_message(
                     chat_id=M.chat_id,
-                    text="❗ Please mention at least one user or reply to their message to ban them.",
+                    text="❗ Please mention at least one user or reply to their message to unban them.",
                     reply_to_message_id=M.message_id,
                 )
                 return
 
-            reason: str | None = (
-                " ".join(context.get("args", [])).strip() if isinstance(context, dict) else None
-            )
-
             for user in users:
                 member = await self.client.bot.get_chat_member(M.chat_id, user.user_id)
                 if member.status == "creator":
-                    await self.client.send_message(
-                        chat_id=M.chat_id,
-                        text=f"❌ Cannot ban group owner: {user.user_full_name or user.user_name}",
-                        reply_to_message_id=M.message_id,
-                    )
-                    continue
+                    return
 
                 if user.user_id == M.bot_userid:
-                    await self.client.send_message(
-                        chat_id=M.chat_id,
-                        text="❌ I can't ban myself.",
-                        reply_to_message_id=M.message_id,
-                    )
-                    continue
+                    return
 
-                await self.client.bot.ban_chat_member(
+                await self.client.bot.unban_chat_member(
                     chat_id=M.chat_id,
                     user_id=user.user_id,
                 )
 
                 await self.client.send_message(
                     chat_id=M.chat_id,
-                    text=f"✅ User with ID {user.user_id} has been banned."
-                    + (f"\nReason: {reason}" if reason else ""),
+                    text=f"✅ User with ID {user.user_id} has been unbanned.",
                 )
 
         except Exception as e:
+            _, _, tb = sys.exc_info()
+            line_no: int = tb.tb_lineno if tb else -1
+        
             await self.client.send_message(
                 chat_id=M.chat_id,
-                text="❌ Failed to ban user(s).",
+                text="❌ Failed to unban user(s).",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(f"[ERROR] [Ban] {e}")
+            self.client.log.error(
+                "[UnBan] line %d: %s",
+                line_no,
+                e,
+            )

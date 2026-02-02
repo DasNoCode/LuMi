@@ -71,15 +71,15 @@ class EventHandler:
 
         if M.event_type == "leave":
             name: str = M.event_user.user_name or M.event_user.user_full_name
-            await self._client.send_message(
+            msg = await self._client.send_message(
                 chat_id=M.chat_id, text=f"👋 @{name} left the chat."
             )
-            return
 
         if M.event_type == "kick":
             name: str = M.event_user.user_name or M.event_user.user_full_name
             by: str = M.action_by.user_name or M.action_by.user_full_name
-            await self._client.send_message(
+            msg = await self._client.send_message(
                 chat_id=M.chat_id, text=f"❌ @{name} was removed by @{by}."
             )
-            return
+            
+        await self._client.delete_message_after(chat_id=M.chat_id, message_id=msg.id, delay=20)

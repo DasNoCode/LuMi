@@ -14,7 +14,8 @@ from typing import (
 from telegram import (
     Bot,
     Update,
-    InputMedia
+    InputMedia,
+    User
 )
 from telegram.ext import (
     Application,
@@ -29,7 +30,7 @@ from telegram.ext import (
 
 from telegram._utils.defaultvalue import DEFAULT_NONE
 from telegram._utils.types import ODVInput, JSONDict
-
+from telegram.constants import ChatMemberStatus
 from pyromod import Client as PyroClient
 
 from Helpers import Utils, get_logger
@@ -57,7 +58,10 @@ class SuperClient:
             api_hash=config.app_hash,
             bot_token=config.app_token,
         )
-
+        
+        self.bot_user_name: Optional[str] = None
+        self.bot_user_id: Optional[int] = None
+        self.bot_permissions: bool = False
         self.bot_name: str = config.app_name
         self.prefix: str = config.prefix
         self.owner_id: int = config.owner_user_id
@@ -88,6 +92,13 @@ class SuperClient:
     def job_queue(self) -> Optional["JobQueue[Any]"]:
         print(self._app.job_queue)
         return self._app.job_queue
+
+    async def info(self, update: Update):
+        me: User = await self._client.get_me()
+        self.bot_user_id: int = me.id
+        self.bot_user_name: str = me.username
+        bot_member = await self._client.get_chat_member(update.message.chat_id, self.bot_user_id)
+        self.bot_permissions = bot_member
 
     async def _on_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -245,4 +256,5 @@ class SuperClient:
         self.command_handler.load_commands("src/Commands")
         self.pyrogram_Client.start()
         self._app.run_polling()
+
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 from zoneinfo import ZoneInfo
 from datetime import datetime
 import os
@@ -97,7 +98,6 @@ class CommandHandler:
         is_command: bool
         raw = M.message
         if getattr(M, "is_callback", False):
-            print("100",M.is_callback, M.message)
             is_command = True
         else:
             is_command = raw.startswith(self._client.config.prefix)
@@ -157,8 +157,7 @@ class CommandHandler:
             self._client.log.info(
                 f"[{msg_type}] from {M.sender.user_name} in {chat_name} at {timestamp}"
             )
-            return
-
+             
         # --- Empty Command ---
         if M.message == self._client.config.prefix:
             return await self._client.send_message(
@@ -244,12 +243,15 @@ class CommandHandler:
             )
 
         # --- Admin Command Validation ---
+        required_perms: List[str] = getattr(cmd.config, "admin_permissions", [])
+        
         if getattr(cmd.config, "OnlyAdmin", False):
             if not M.is_admin:
-                if not M.bot_is_admin:
+                bot_has_perm: bool = M.sender.permissions.get(perm) is not False
+                if not bot_has_perm:
                     return await self._client.send_message(
                         chat_id=M.chat_id,
-                        text="🤖 Bot must be an admin to execute this command.",
+                        text=f"🤖 Bot does't have {required_perms} to execute this command.",
                         reply_to_message_id=M.message_id,
                     )
                 return await self._client.send_message(
@@ -259,7 +261,6 @@ class CommandHandler:
                 )
 
         if M.sender.user_role == "admin":
-            required_perms: List[str] = getattr(cmd.config, "admin_permissions", [])
             for perm in required_perms:
                 has_perm: bool = M.sender.permissions.get(perm) is not False
                 if not has_perm:
@@ -315,5 +316,4 @@ class CommandHandler:
                 if rank_cmd:
                     await rank_cmd.exec(M, self._parse_args(f" caption:@{M.sender.user_name or M.sender.user_full_name} you levelled up 🎉!\n{old_level['level']} -> {new_level['level']}"))
                 
-                
-                
+    

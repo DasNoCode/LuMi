@@ -1,27 +1,28 @@
+import io
 import os
 import re
 import random
 import base64
 import shutil
+import string
+import subprocess
 import tempfile
 import asyncio
+import imgbbpy
 import requests
 
-from typing import Any, Optional, List, Set
+from pathlib import Path
 from bs4 import BeautifulSoup
+from captcha.image import ImageCaptcha
+from typing import Any, Optional, List, Set
 from moviepy.video.io.VideoFileClip import VideoFileClip
-import imgbbpy
+
 
 
 class Utils:
     def __init__(self, log: Any, config: Any) -> None:
         self.log = log
         self.config = config
-
-    # --- async / timing ---
-    @staticmethod
-    async def sleep(ms: int) -> None:
-        await asyncio.sleep(ms / 1000)
 
     # --- network ---
     def fetch(self, url: str) -> Optional[dict[str, Any]]:
@@ -41,12 +42,33 @@ class Utils:
         except Exception as e:
             self.log.error(f"[ERROR] [fetch_buffer] {e}")
             return b""
-
-    # --- helpers ---
+        
     @staticmethod
-    def is_truthy(value: Any) -> bool:
-        return bool(value)
-
+    def rank_card(
+        user_name: str,
+        avatar_url: str,
+        level: int,
+        current_xp: int,
+        level_xp_target: int,
+        previous_level_xp: int,
+    ) -> str:
+        return (
+            "https://vacefron.nl/api/rankcard"
+            f"?username=@{user_name}"
+            f"&avatar={avatar_url}"
+            f"&level={level}"
+            f"&rank="
+            f"&currentxp={current_xp}"
+            f"&nextlevelxp={level_xp_target}"
+            f"&previouslevelxp={previous_level_xp}"
+            "&custombg=https://media.discordapp.net/attachments/1022533781040672839/"
+            "1026849383104397312/image0.jpg"
+            "&xpcolor=00ffff"
+            "&isboosting=false"
+            "&circleavatar=true"
+        )
+        
+    # --- helpers ---
     def readdir_recursive(self, directory: str) -> List[str]:
         results: List[str] = []
         for root, _, files in os.walk(directory):
@@ -180,27 +202,6 @@ class Utils:
             self.log.error(f"[ERROR] [webp_to_mp4] {e}")
             return b""
 
-    def gif_to_mp4(self, gif: bytes) -> bytes:
-        temp_dir: str = tempfile.mkdtemp()
-        gif_path: str = os.path.join(temp_dir, "input.gif")
-        mp4_path: str = os.path.join(temp_dir, "output.mp4")
-
-        try:
-            with open(gif_path, "wb") as f:
-                f.write(gif)
-
-            clip = VideoFileClip(gif_path)
-            clip.write_videofile(mp4_path, codec="libx264", logger=None)
-
-            with open(mp4_path, "rb") as f:
-                return f.read()
-
-        except Exception as e:
-            self.log.error(f"[ERROR] [gif_to_mp4] {e}")
-            return b""
-
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def img_to_url(self, img_path: str) -> Optional[str]:
         try:
@@ -210,6 +211,51 @@ class Utils:
         except Exception as e:
             self.log.error(f"[ERROR] [img_to_url] {e}")
             return None
+        
+    @staticmethod
+    def image_to_webp(input_path: Path, output_path: Path) -> None:
+        STICKER_SIZE = "512:512"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(input_path),
+                "-vf",
+                f"scale={STICKER_SIZE}:force_original_aspect_ratio=decrease",
+                "-c:v",
+                "libwebp",
+                "-quality",
+                "90",
+                str(output_path),
+            ],
+            check=True,
+        )
+    
+    @staticmethod
+    def video_to_webm(input_path: Path, output_path: Path) -> None:
+        STICKER_SIZE = "512:512"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(input_path),
+                "-vf",
+                f"scale={STICKER_SIZE}:force_original_aspect_ratio=decrease,fps=30",
+                "-c:v",
+                "libvpx-vp9",
+                "-pix_fmt",
+                "yuv420p",
+                "-b:v",
+                "0",
+                "-crf",
+                "30",
+                "-an",
+                str(output_path),
+            ],
+            check=True,
+        )
 
     # --- formatting ---
     @staticmethod
@@ -227,28 +273,35 @@ class Utils:
             return f"{days}d {hours}h {minutes}m {seconds}s"
 
         return f"{hours}h {minutes}m {seconds}s"
+        
+    # --- Captcha ---
+    @staticmethod
+    def random_text() -> str:
+        chars: str = string.ascii_uppercase + string.digits
+        return "".join(random.choice(chars) for _ in range(6))
 
     @staticmethod
-    def rank_card(
-        user_name: str,
-        avatar_url: str,
-        level: int,
-        current_xp: int,
-        level_xp_target: int,
-        previous_level_xp: int,
-    ) -> str:
-        return (
-            "https://vacefron.nl/api/rankcard"
-            f"?username=@{user_name}"
-            f"&avatar={avatar_url}"
-            f"&level={level}"
-            f"&rank="
-            f"&currentxp={current_xp}"
-            f"&nextlevelxp={level_xp_target}"
-            f"&previouslevelxp={previous_level_xp}"
-            "&custombg=https://media.discordapp.net/attachments/1022533781040672839/"
-            "1026849383104397312/image0.jpg"
-            "&xpcolor=00ffff"
-            "&isboosting=false"
-            "&circleavatar=true"
+    def captcha_image(text: str) -> bytes:
+        fonts: list[str] = [
+            str(p) for p in Path("src/Commands/Chat/Captcha/CaptchaFont").glob("*.ttf")
+        ]
+
+        image: ImageCaptcha = ImageCaptcha(
+            width=280,
+            height=90,
+            fonts=[random.choice(fonts)],
         )
+
+        buf: io.BytesIO = io.BytesIO()
+        image.write(text, buf)
+        return buf.getvalue()
+    
+    @classmethod
+    def captcha_options(self, answer: str) -> List[str]:
+        opts: set[str] = {answer}
+        while len(opts) < 4:
+            opts.add(self.random_text())
+        options: List[str] = list(opts)
+        random.shuffle(options)
+        return options
+    

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 from telegram import ChatPermissions
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
@@ -83,9 +84,16 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
+            _, _, tb = sys.exc_info()
+            line_no: int = tb.tb_lineno if tb else -1
+        
             await self.client.send_message(
                 chat_id=M.chat_id,
-                text="❗ An error occurred while toggling group announcement.",
+                text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,
             )
-            self.client.log.error(f"[ERROR][ChatMute] {e}")
+            self.client.log.error(
+                "[ChatMute] line %d: %s",
+                line_no,
+                e,
+            )
