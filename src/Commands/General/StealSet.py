@@ -89,7 +89,7 @@ class Command(BaseCommand):
                 chat_id=M.chat_id,
                 text=(
                     "✅ Sticker pack cloned successfully!\n"
-                    f"👉 <a href=\"https://t.me/addstickers/{new_pack_name}\">Sticker Pack</a>"
+                    f"👉 <a href=\"https://t.me/addstickers/{new_pack_name}\">Sticker</a>"
                 ),
                 parse_mode="HTML",
                 link_preview_options=LinkPreviewOptions(is_disabled=True),

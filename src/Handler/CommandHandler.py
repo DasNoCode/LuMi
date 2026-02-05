@@ -1,6 +1,6 @@
 from __future__ import annotations
 import asyncio
-from zoneinfo import ZoneInfo
+import traceback
 from datetime import datetime
 import os
 import importlib.util
@@ -104,7 +104,7 @@ class CommandHandler:
         context: JsonObject = JsonObject(self._parse_args(raw))
         msg_type: str = "CMD" if is_command else "MSG"
         chat_name: str = M.chat_title if M.chat_type == "supergroup" else "private"
-        timestamp: datetime = datetime.now(ZoneInfo("Asia/Kolkata"))
+        timestamp: int = datetime.now().date()
         get_user = lambda uid: self._client.db.get_user_by_user_id(
             uid or M.sender.user_id
         )
@@ -116,7 +116,7 @@ class CommandHandler:
             if M.message[1:] == "afk":
                 return
         
-            now_ts: int = int(datetime.now().timestamp())
+            now_ts: int = int(datetime.now().second)
             afk_duration: int = (int(now_ts - sender.afk["duration"]))
             user_name: str = (
                 M.sender.user_name
@@ -183,8 +183,6 @@ class CommandHandler:
                 reply_to_message_id=M.message_id,
             )
 
-        command_info: Command = self._client.db.get_cmd_info(cmd.config.command)
-
         # --- Ban Check ---
         if sender.ban["status"]:
             banned_at = sender.ban.get("since", None)
@@ -206,15 +204,21 @@ class CommandHandler:
             )
 
         # --- Command Enabled Check ---
-        if not command_info.enable:
-           return await self._client.send_message(
-               chat_id=M.chat_id,
-               text=
-               f"<blockquote>🚫 Command **{cmd.config.command}** is currently disabled.\n\n"
-               f"⏰ Disabled at: {command_info.created_at.strftime('%Y-%m-%d %H:%M:%S (%z)')}\n"
-               f"📝 Reason: {command_info.reason}</blockquote>",
-               parse_mode=telegram.constants.ParseMode.HTML
-           )
+        command_info: dict[str, Any] = self._client.db.get_cmd_info(cmd.config.command)
+        
+        if not command_info.get("enabled", True):
+            reason: str | None = command_info.get("reason")
+        
+            return await self._client.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    f"<blockquote>"
+                    f"Command <b>{cmd.config.command}</b> is currently disabled.\n\n"
+                    f"└📝 Reason: {reason or 'No reason provided.'}"
+                    f"</blockquote>"
+                ),
+                parse_mode=telegram.constants.ParseMode.HTML,
+            )
 
         # --- Chat/Private Command Validation ---
         if getattr(cmd.config, "OnlyChat", False) and M.chat_type == "private":
@@ -267,7 +271,12 @@ class CommandHandler:
 
         # --- Execute Command ---
         await cmd.exec(M, context)
-        
+        #try:
+        #    
+        #except Exception as e:
+        #    tb = traceback.extract_tb(e.__traceback__)[-1]
+        #    self._client.log.error(f"[ERROR] {context.cmd} : {tb.lineno} | {e}")
+            
         # --- Mention AFK Users ---
         users: list[User] = []
         

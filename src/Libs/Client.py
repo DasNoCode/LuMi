@@ -72,7 +72,7 @@ class SuperClient:
             ApplicationBuilder().token(config.app_token).build()
         )
         self.bot: Bot = self._app.bot
-        self.captcha_store: dict[tuple[int, int], dict[str, Any]] = {}
+        self.interaction_store: dict[tuple[int, int], dict[str, Any]] = {}
         self.command_handler: CommandHandler = CommandHandler(self)
         self.event_handler: EventHandler = EventHandler(self)
         self.db: Database = Database(config.url)

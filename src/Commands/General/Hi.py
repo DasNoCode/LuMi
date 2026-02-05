@@ -24,6 +24,8 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-       self.client.db.add_sticker_sets("dajgsgdsas")
+       await self.client.send_message(chat_id=M.chat_id ,text="hi")
+
+
         
         

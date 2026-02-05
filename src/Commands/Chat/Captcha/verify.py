@@ -36,7 +36,7 @@ class Command(BaseCommand):
 
         key: Tuple[int, int] = (M.chat_id, user_id)
 
-        captcha_data: Dict[str, Any] | None = self.client.captcha_store.get(key)
+        captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
         if not captcha_data:
             return
 
@@ -51,7 +51,7 @@ class Command(BaseCommand):
         attempt: int = int(captcha_data["attempt"])
 
         if value == captcha_data["code"]:
-            self.client.captcha_store.pop(key, None)
+            self.client.interaction_store.pop(key, None)
 
             await self.client.bot.restrict_chat_member(
                 chat_id=M.chat_id,
@@ -71,7 +71,7 @@ class Command(BaseCommand):
             return
         print(attempt)
         if attempt >= 2:
-            self.client.captcha_store.pop(key, None)
+            self.client.interaction_store.pop(key, None)
 
             await self.client.kick_chat_member(
                 chat_id=M.chat_id,
@@ -130,7 +130,7 @@ class Command(BaseCommand):
             return
 
         self._retry_guard.pop(key, None)
-        self.client.captcha_store.pop(key, None)
+        self.client.interaction_store.pop(key, None)
 
         try:
             await self.client.kick_chat_member(

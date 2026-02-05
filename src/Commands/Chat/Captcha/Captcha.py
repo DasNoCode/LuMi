@@ -42,12 +42,12 @@ class Command(BaseCommand):
             return
 
         key: Tuple[int, int] = (M.chat_id, user_id)
-        existing: Dict[str, Any] | None = self.client.captcha_store.get(key)
+        existing: Dict[str, Any] | None = self.client.interaction_store.get(key)
 
         captcha_code: str = self.client.utils.random_text()
         options: list[str] = self.client.utils.captcha_options(captcha_code)
 
-        self.client.captcha_store[key] = {
+        self.client.interaction_store[key] = {
             "code": captcha_code,
             "attempt": existing["attempt"] if existing else 1,
         }
@@ -95,7 +95,7 @@ class Command(BaseCommand):
         await asyncio.sleep(180)
 
         key: Tuple[int, int] = (chat_id, user_id)
-        captcha_data: Dict[str, Any] | None = self.client.captcha_store.get(key)
+        captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
 
         if not captcha_data:
             return
@@ -111,7 +111,7 @@ class Command(BaseCommand):
             pass
 
         if attempt >= 2:
-            self.client.captcha_store.pop(key, None)
+            self.client.interaction_store.pop(key, None)
             try:
                 await self.client.kick_chat_member(
                     chat_id=chat_id,
