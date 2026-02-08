@@ -69,7 +69,7 @@ class Command(BaseCommand):
                     f"├ <b>Romaji:</b> {anime['title']['romaji']}\n"
                     f"├ <b>Type:</b> {anime['format']}\n"
                     f"├ <b>Status:</b> {anime['status']}\n"
-                    f"├ <b>More Info:</b> {self.client.prefix}aid {anime['id']}\n\n"
+                    f"└ <b>More Info:</b> {self.client.prefix}aid {anime['id']}\n\n"
                 )
 
             text += "</blockquote>"

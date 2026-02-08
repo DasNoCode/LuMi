@@ -69,7 +69,7 @@ class Command(BaseCommand):
                 f"├ <b>Age:</b> {character.get('age', 'Unknown')}\n"
                 f"├ <b>Gender:</b> {gender} {symbol}\n"
                 f"├ <b>AniList:</b> {character.get('siteUrl', 'N/A')}\n\n"
-                f"├ <b>Description:</b>\n"
+                f"└ <b>Description:</b>\n"
                 f"{character.get('description', 'No description available.')}"
                 "</blockquote>"
             )

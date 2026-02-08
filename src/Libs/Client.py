@@ -1,10 +1,12 @@
 from __future__ import annotations
 import asyncio
+import os
 from pathlib import Path
+from types import CoroutineType
 import pkg_resources
 from typing import (
     TYPE_CHECKING,
-    Dict,
+    AsyncGenerator,
     Iterable,
     Union,
     Optional,
@@ -33,7 +35,7 @@ from telegram.ext import (
 from telegram._utils.defaultvalue import DEFAULT_NONE
 from telegram._utils.types import ODVInput, JSONDict
 from pyromod import Client as PyroClient
-
+from dotenv import load_dotenv, set_key
 from Helpers import Utils, get_logger
 
 
@@ -45,6 +47,7 @@ if TYPE_CHECKING:
         ReactionType,
     )
     from pyrogram.types import User as PyroUser
+    from pyrogram import enums
 
 
 class SuperClient:
@@ -89,13 +92,23 @@ class SuperClient:
         
     @property
     def job_queue(self) -> Optional["JobQueue[Any]"]:
-        print(self._app.job_queue)
         return self._app.job_queue
 
-    async def bot_info(self):
-        me: User = await self.get_me()
-        self.bot_user_id: int = me.id
-        self.bot_user_name: str = me.username
+    async def bot_info(self) -> None:
+        env_user_id = os.getenv("BOT_USER_ID")
+        env_user_name = os.getenv("BOT_USER_NAME")
+
+        if env_user_id and env_user_name:
+            self.bot_user_id = int(env_user_id)
+            self.bot_user_name = env_user_name
+        else:
+           me: User = await self.get_me()
+   
+           self.bot_user_id = me.id
+           self.bot_user_name = me.username or ""
+   
+           set_key(".env", "BOT_USER_ID", str(self.bot_user_id))
+           set_key(".env", "BOT_USER_NAME", self.bot_user_name)
 
     async def _on_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -116,6 +129,32 @@ class SuperClient:
         await self.bot_info()
         msg = await Message(self, update.message).build()
         await self.event_handler.handler(msg)
+        
+    async def profile_photo_url(self, user_id: int) -> str:
+        default_path: str = "src/Assets/image.png"
+    
+        db_user = self.db.get_user_by_user_id(user_id)
+        avatar_url: Optional[str] = getattr(db_user, "profile_photo", None)
+    
+        if avatar_url:
+            return avatar_url
+    
+        photo_id: Optional[str] = await self.get_profile_id(user_id)
+        if not photo_id:
+            avatar_url = self.utils.img_to_url(default_path)
+            self.db.set_user_profile_photo(user_id, avatar_url)
+            return avatar_url
+    
+        photo_path: str = await self.download_media(photo_id)
+        avatar_url = self.utils.img_to_url(photo_path)
+    
+        try:
+            os.remove(photo_path)
+        except Exception:
+            pass
+    
+        self.db.set_user_profile_photo(user_id, avatar_url)
+        return avatar_url
 
     async def send_message(
         self, chat_id: Union[int, str], text: str, **kwargs
@@ -228,7 +267,7 @@ class SuperClient:
         self, user_name: Union[int, str, Iterable[Union[int, str]]]
     ) -> Union[PyroUser, List[PyroUser]]:
         return await self.pyrogram_Client.get_users(user_name)
-
+    
     async def delete_message_after(
         self,
         chat_id: int,

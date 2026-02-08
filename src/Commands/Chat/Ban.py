@@ -44,9 +44,8 @@ class Command(BaseCommand):
                 )
                 return
 
-            reason: str | None = (
-                " ".join(context.get("args", [])).strip() if isinstance(context, dict) else None
-            )
+            text: str = context.get("text", None)
+            reason = " ".join(word for word in text.split() if not word.startswith("@"))
 
             for user in users:
                 member = await self.client.bot.get_chat_member(M.chat_id, user.user_id)
@@ -65,16 +64,16 @@ class Command(BaseCommand):
                         reply_to_message_id=M.message_id,
                     )
                     continue
-
-                await self.client.bot.ban_chat_member(
-                    chat_id=M.chat_id,
-                    user_id=user.user_id,
-                )
-
+                
+                self.client.db.manage_banned_user(chat_id=M.chat_id, user_id=user.user_id, by_user_id=M.sender.user_id, ban=True, reason=reason)
                 await self.client.send_message(
                     chat_id=M.chat_id,
                     text=f"✅ User with ID {user.user_id} has been banned."
                     + (f"\nReason: {reason}" if reason else ""),
+                )
+                await self.client.bot.ban_chat_member(
+                    chat_id=M.chat_id,
+                    user_id=user.user_id,
                 )
 
         except Exception as e:

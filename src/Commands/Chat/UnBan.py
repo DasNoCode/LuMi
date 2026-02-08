@@ -57,7 +57,7 @@ class Command(BaseCommand):
                     chat_id=M.chat_id,
                     user_id=user.user_id,
                 )
-
+                self.client.db.manage_banned_user(chat_id=M.chat_id, user_id=user.user_id, ban=False)
                 await self.client.send_message(
                     chat_id=M.chat_id,
                     text=f"✅ User with ID {user.user_id} has been unbanned.",

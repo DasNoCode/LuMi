@@ -25,15 +25,7 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        image_url = "https://nekos.best/api/v2/waifu/2a115c8c-9bb7-4e53-bc31-c36afa9db494.png"
-        text = f'<a href="{image_url}">&#8204;</a>Here is your requested waifu!'
-    
-        await self.client.send_message(
-            chat_id=M.chat_id,
-            text=text,
-            parse_mode="HTML",
-            reply_to_message_id=M.message_id 
-        )
-
+     user = await self.client.bot.get_chat(M.sender.user_id)
+     await self.client.send_message(M.chat_id, user.username)
         
         

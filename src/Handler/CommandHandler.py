@@ -11,7 +11,7 @@ from Helpers import JsonObject, get_rank
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message, BaseCommand
-    from Models import Command, User
+    from Models import User
 
 
 class CommandHandler:
@@ -104,7 +104,7 @@ class CommandHandler:
         context: JsonObject = JsonObject(self._parse_args(raw))
         msg_type: str = "CMD" if is_command else "MSG"
         chat_name: str = M.chat_title if M.chat_type == "supergroup" else "private"
-        timestamp: int = datetime.now().date()
+        timestamp: int = datetime.now()
         get_user = lambda uid: self._client.db.get_user_by_user_id(
             uid or M.sender.user_id
         )
@@ -116,7 +116,7 @@ class CommandHandler:
             if M.message[1:] == "afk":
                 return
         
-            now_ts: int = int(datetime.now().second)
+            now_ts: int = int(timestamp.second)
             afk_duration: int = (int(now_ts - sender.afk["duration"]))
             user_name: str = (
                 M.sender.user_name
@@ -145,17 +145,17 @@ class CommandHandler:
                 reply_to_message_id=M.message_id,
             )
             # --- Disable AFK ---
-            self._client.db.update_user_afk(M.sender.user_id, False, None, [])
+            self._client.db.set_user_afk(user_id=M.sender.user_id, status=False)
 
         # --- Command or Message Logging ---
         if is_command:
             self._client.log.info(
                 f"[{msg_type}] {self._client.config.prefix}{context.cmd} from "
-                f"@{getattr(M.sender, 'user_name', 'user_full_name')} in {chat_name} at {timestamp}"
+                f"@{getattr(M.sender, 'user_name', 'user_full_name')} in {chat_name} at {timestamp.date()}"
             )
         else:
             return self._client.log.info(
-                f"[{msg_type}] from {M.sender.user_name} in {chat_name} at {timestamp}"
+                f"[{msg_type}] from {M.sender.user_name} in {chat_name} at {timestamp.date()}"
             )
              
         # --- Empty Command ---
@@ -289,9 +289,9 @@ class CommandHandler:
         
             afk_reason: str | None = afk_info.get("reason")
         
-            self._client.db.update_user_afk_message_id(
-                mentioned_user.user_id,
-                M.message_id,
+            self._client.db.set_user_afk(
+                user_id=mentioned_user.user_id,
+                mentioned_msg_id=M.message_id,
             )
             await self._client.send_message(
                 chat_id=M.chat_id,

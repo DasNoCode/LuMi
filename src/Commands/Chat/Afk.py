@@ -29,8 +29,9 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: list[Any]) -> None:
         try:
-            reason: str = " ".join(context.get("args", [])).strip() if context else None
-            self.client.db.update_user_afk(M.sender.user_id, True, reason)
+            text: str = context.get("text", None)
+            reason = " ".join(word for word in text.split() if not word.startswith("@"))
+            self.client.db.set_user_afk(user_id=M.sender.user_id, status=True, reason=reason)
 
             afk_text: str = (
                 f"@{M.sender.user_name or M.sender.user_full_name}, you're now AFK 💤"

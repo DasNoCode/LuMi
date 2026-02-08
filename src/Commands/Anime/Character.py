@@ -71,7 +71,7 @@ class Command(BaseCommand):
                     f"├ <b>Full Name:</b> {char['name']['full']}\n"
                     f"├ <b>Native Name:</b> {char['name']['native']}\n"
                     f"├ <b>Gender:</b> {gender} {symbol}\n"
-                    f"├ <b>More Info:</b> {self.client.prefix}cid {char['id']}\n\n"
+                    f"└ <b>More Info:</b> {self.client.prefix}cid {char['id']}\n\n"
                 )
 
             text += "</blockquote>"

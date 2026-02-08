@@ -42,7 +42,7 @@ class Command(BaseCommand):
            if M.is_callback and action:
                if action == "greetings":
                    greetings_on = not greetings_on
-                   self.client.db.greetings(M.chat_id, greetings_on)
+                   self.client.db.set_greetings(M.chat_id, greetings_on)
    
                elif action == "captcha":
                    if not captcha_on:

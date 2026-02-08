@@ -67,7 +67,7 @@ class Command(BaseCommand):
                 f"├ <b>Last Aired:</b> {anime['endDate']}\n"
                 f"├ <b>Genres:</b> {', '.join(anime['genres'])}\n"
                 f"├ <b>Studios:</b> {anime['studios']}\n"
-                f"├ <b>Trailer:</b> https://youtu.be/{anime.get('trailer', {}).get('id', 'N/A')}\n\n"
+                f"└ <b>Trailer:</b> https://youtu.be/{anime.get('trailer', {}).get('id', 'N/A')}\n\n"
                 f"📖 <b>Description</b>\n{anime['description']}"
                 "</blockquote>"
             )

@@ -4,9 +4,9 @@ from typing import Optional, Any, Dict, List
 from pymodm import connect
 from pymodm.errors import DoesNotExist
 from telegram import ChatPermissions
-
+from pathlib import Path
 from Models import User, Chat, Bot
-from Helpers import JsonObject
+
 
 
 class Database:
@@ -36,7 +36,7 @@ class Database:
 
     def _update_or_create_group(self, chat_id: int, updates: Dict[str, Any]) -> None:
         try:
-            chat = Chat.objects.raw({"chat_id": str(chat_id)}).first()
+            chat = Chat.objects.raw({"chat_id": int(chat_id)}).first()
             for key, value in updates.items():
                 setattr(chat, key, value)
             chat.save()
@@ -44,12 +44,13 @@ class Database:
             updates["chat_id"] = str(chat_id)
             Chat(**updates).save()
 
-    def get_group_by_chat_id(self, chat_id: int) -> Any:
+    def get_group_by_chat_id(self, chat_id: int) -> Chat:
         try:
-            return Chat.objects.raw({"chat_id": str(chat_id)}).first()
+            return Chat.objects.raw({"chat_id": chat_id}).first()
         except DoesNotExist:
-            self._update_or_create_group(chat_id, {})
-            return JsonObject({"chat_id": str(chat_id), "mod": False, "events": False})
+            chat = Chat(chat_id=chat_id)
+            chat.save()
+            return chat
 
     def _get_bot(self) -> Bot:
         try:
@@ -137,8 +138,6 @@ class Database:
 
     def get_user_sticker_sets(self, user_id: int) -> List[Dict[str, Any]]:
         bot = self._get_bot()
-        print(bot)
-        print(bot.sticker_sets)
         return [
             sticker
             for sticker in bot.sticker_sets
@@ -149,7 +148,7 @@ class Database:
         bot = self._get_bot()
         return bot.sticker_sets
 
-    def greetings(self, chat_id: int, events_status: bool) -> None:
+    def set_greetings(self, chat_id: int, events_status: bool) -> None:
         self._update_or_create_group(chat_id, {"events": events_status})
         
     def set_group_mod(self, chat_id: int, mod_status: bool) -> None:
@@ -191,30 +190,31 @@ class Database:
         }
         self._update_or_create_user(user_id, {"ban": ban_data})
 
-    def update_user_afk(
+    def set_user_afk(
         self,
         user_id: int,
-        status: bool,
+        *,
+        status: bool | None = None,
         reason: str | None = None,
-        mentioned_msgs: list[int] | None = None,
+        mentioned_msg_id: int | None = None,
     ) -> None:
-        afk_data = {
-            "status": status,
-            "reason": reason,
-            "duration": self.now() if status else None,
-            "mentioned_msgs": mentioned_msgs or [],
-        }
+        user: User = self.get_user_by_user_id(user_id)
+        afk_data: dict = getattr(user, "afk", {}) or {}
+    
+        if status is not None:
+            afk_data["status"] = status
+            afk_data["reason"] = reason
+            afk_data["duration"] = self.now() if status else None
+    
+            if not status:
+                afk_data["mentioned_msgs"] = []
+            else:
+                afk_data.setdefault("mentioned_msgs", [])
+    
+        if mentioned_msg_id is not None:
+            afk_data.setdefault("mentioned_msgs", []).append(mentioned_msg_id)
+    
         self._update_or_create_user(user_id, {"afk": afk_data})
-    
-    
-    def update_user_afk_message_id(self, user_id: int, message_id: int) -> None:
-        try:
-            user_data: User = self.get_user_by_user_id(user_id)
-            afk_data = user_data.afk
-            afk_data.setdefault("mentioned_msgs", []).append(message_id)
-            self._update_or_create_user(user_id, {"afk": afk_data})
-        except Exception as e:
-            print(e)
     
     def add_xp(self, user_id: int, xp: int) -> None:
         try:
@@ -224,5 +224,116 @@ class Database:
         except DoesNotExist:
             self._update_or_create_user(user_id, {"xp": xp})
 
+    def add_warn(
+        self,
+        chat_id: int,
+        user_id: int,
+        by_user_id: int,
+        reason: str | None = None,
+    ) -> int:
+        chat: Chat = self.get_group_by_chat_id(chat_id)
+    
+        warns: List[Dict[str, object]] = list(chat.warns or [])
+    
+        for i, entry in enumerate(warns):
+            if entry["user_id"] == user_id:
+                count: int = min(entry.get("count", 0) + 1, 3)
+    
+                warns[i] = {
+                    "user_id": user_id,
+                    "by_user_id": by_user_id,
+                    "count": count,
+                    "reasons": entry.get("reasons", []) + ([reason] if reason else []),
+                }
+    
+                chat.warns = warns
+                chat.save()
+                return count
+    
+        warns.append(
+            {
+                "user_id": user_id,
+                "by_user_id": by_user_id,
+                "count": 1,
+                "reasons": [reason] if reason else [],
+            }
+        )
+    
+        chat.warns = warns
+        chat.save()
+        return 1
 
+    def manage_banned_user(
+        self,
+        chat_id: int,
+        user_id: int,
+        by_user_id: int,
+        ban: bool,
+        reason: Optional[str] = None,
+    ) -> bool:
+        chat = self.get_group_by_chat_id(chat_id)
+    
+        banned: List[Dict[str, Any]] = list(chat.banned_users or [])
+    
+        if ban:
+            for entry in banned:
+                if entry["user_id"] == user_id:
+                    return False
+    
+            banned.append(
+                {
+                    "user_id": user_id,
+                    "by": by_user_id,
+                    "date": datetime.now(),
+                    "reason": reason,
+                }
+            )
+    
+            chat.banned_users = banned
+            chat.save()
+            return True
+    
+        for entry in banned:
+            if entry["user_id"] == user_id:
+                banned.remove(entry)
+                chat.banned_users = banned
+                chat.save()
+                return True
+    
+        return False
+    
+    def set_user_profile_photo(
+        self,
+        user_id: int,
+        photo_url: Optional[str],
+    ) -> None:
+        self._update_or_create_user(
+            user_id,
+            {"profile_photo_url": photo_url},
+        )
+    
 
+    def update_env(key: str, value: str, env_path: str = ".env") -> None:
+        path = Path(env_path)
+    
+        if not path.exists():
+            path.write_text(f"{key}={value}\n")
+            return
+    
+        lines = path.read_text().splitlines()
+        updated = False
+    
+        for i, line in enumerate(lines):
+            if line.startswith(f"{key}="):
+                lines[i] = f"{key}={value}"
+                updated = True
+                break
+    
+        if not updated:
+            lines.append(f"{key}={value}")
+    
+        path.write_text("\n".join(lines) + "\n")
+    
+
+    
+    

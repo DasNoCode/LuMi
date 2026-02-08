@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import os
-import sys
 import traceback
 from typing import Any, TYPE_CHECKING
-
-import telegram
 
 from Libs import BaseCommand
 from Helpers import get_rank
@@ -62,7 +59,6 @@ class Command(BaseCommand):
                 rank_emoji: str = rank_data["rank_emoji"]
                 next_rank_name: str = rank_data["next_rank_name"]
                 next_rank_emoji: str = rank_data["next_rank_emoji"]
-                next_rank_xp: int = rank_data["next_rank_xp"]
                 current_xp: int = rank_data["xp"]
                 level_xp_target: int = rank_data["level_xp_target"]
 
@@ -71,15 +67,8 @@ class Command(BaseCommand):
                     if level > 1
                     else 0
                 )
-                photo_id: str = await self.client.get_profile_id(user.user_id)
-                photo: str | None = await self.client.download_media(
-                    photo_id
-                )
-                avatar_url: str = self.client.utils.img_to_url(photo)
-                os.remove(photo)
-                
-                card_buffer = self.client.utils.fetch_buffer(
-                    self.client.utils.rank_card(
+                avatar_url: str | None = await self.client.profile_photo_url(user_id=user.user_id)
+                card_url = self.client.utils.rank_card(
                         user_name,
                         avatar_url,
                         level,
@@ -87,22 +76,23 @@ class Command(BaseCommand):
                         level_xp_target,
                         previous_level_xp,
                     )
+                text = (
+                    f'<a href="{card_url}">&#8204;</a>'
+                    "<blockquote>"
+                    f"├Rank name: {rank_name} {rank_emoji}\n"
+                    f"├Next rank: {next_rank_name} {next_rank_emoji}\n"
+                    f"└XP needed: {level_xp_target - current_xp}"
+                    "</blockquote>"
+                    f"\n{caption or ''}"
                 )
-                await self.client.send_photo(
+                
+                await self.client.send_message(
                     chat_id=M.chat_id,
-                    photo=card_buffer,
-                    caption=(
-                        "<blockquote>"
-                        f"├Rank name: {rank_name} {rank_emoji}\n"
-                        f"├Next rank: {next_rank_name} {next_rank_emoji}\n"
-                        f"└XP needed: {next_rank_xp - current_xp}"
-                        "</blockquote>"
-                        f"\n{caption if caption else ''}"
-                    ),
+                    text=text,
+                    parse_mode="HTML",
                     reply_to_message_id=M.message_id,
-                    parse_mode=telegram.constants.ParseMode.HTML,
                 )
 
         except Exception as e:
             tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(f"[ERROR] {tb.filename.split('/')[-1]}: {tb.lineno} | {e}")

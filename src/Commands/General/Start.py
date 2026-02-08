@@ -26,40 +26,65 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        keyboard = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🧑‍💻 Owner",
-                        url="https://t.me/OWNER_USERNAME",
-                    ),
-                    InlineKeyboardButton(
-                        "💬 Support",
-                        url="https://t.me/SUPPORT_GROUP",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "➕ Add to Group",
-                        url=f"https://t.me/{self.client.bot.username}?startgroup=true",
-                    ),
-                    InlineKeyboardButton(
-                        "🤖 Commands List",
-                        callback_data="cmd:Commands",
-                    ),
-                ],
-            ]
-        )
+        user_mention: str = M.sender.user_name
 
-        text = (
-            "👋 <b>Hello, I'm Lumi!</b>\n\n"
-            "Chat with me anytime! 💬\n"
-            "Let's talk, share moments, and have some fun together ✨"
-        )
+        if M.is_callback:
+            try:
+                await self.client.bot.edit_message_caption(
+                    chat_id=M.chat_id,
+                    message_id=M.message_id,
+                    caption=(
+                        f"✨ <b>Welcome {user_mention}, I am Lumi!</b>\n\n"
+                        "<b>I am a group management bot!</b>\n"
+                        "With fun games and many anime commands."
+                    ),
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    "🧑‍💻 Owner",
+                                    url="https://t.me/OWNER_USERNAME",
+                                ),
+                                InlineKeyboardButton(
+                                    "💬 Support",
+                                    url="https://t.me/SUPPORT_GROUP",
+                                ),
+                            ],
+                            [
+                                InlineKeyboardButton(
+                                    "➕ Add to Group",
+                                    url=f"https://t.me/{self.client.bot.username}?startgroup=true",
+                                ),
+                                InlineKeyboardButton(
+                                    "🤖 Commands List",
+                                    callback_data="cmd:Commands",
+                                ),
+                            ],
+                        ]
+                    ),
+                )
+            except Exception:
+                pass
+            return
 
-        await self.client.send_message(
+        await self.client.send_photo(
             chat_id=M.chat_id,
-            text=text,
-            reply_markup=keyboard,
+            photo="src/Assets/bot_image.jpg",
+            caption=f"👋 <b>Hello {user_mention}, I'm Lumi! ✨</b>",
             parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "👋 Hello",
+                            callback_data="cmd:start",
+                        ),
+                        InlineKeyboardButton(
+                            "✨ Intro",
+                            callback_data="cmd:start intro:true",
+                        ),
+                    ]
+                ]
+            ),
         )

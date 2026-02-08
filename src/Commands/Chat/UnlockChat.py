@@ -36,7 +36,7 @@ class Command(BaseCommand):
         )
         await self.client.send_message(
             chat_id=M.chat_id,
-            text="🔓 Chat unlocked.",
+            text=f"🔓 Chat unlocked by {M.sender.user_name}.",
             reply_to_message_id=M.message_id,
         )
 
