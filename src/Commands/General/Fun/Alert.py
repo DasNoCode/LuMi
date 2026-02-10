@@ -29,7 +29,7 @@ class Command(BaseCommand):
         text: str = context.get("text", "").strip()
 
         if not text:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Please provide some text for the alert.",
                 reply_to_message_id=M.message_id,
@@ -39,7 +39,7 @@ class Command(BaseCommand):
         encoded: str = quote_plus(text)
         url: str = f"https://api.popcat.xyz/v2/alert?text={encoded}"
 
-        await self.client.send_photo(
+        await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=url,
             reply_to_message_id=M.message_id,

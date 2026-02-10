@@ -36,7 +36,7 @@ class Command(BaseCommand):
             text2 = reply.text.strip()
 
         if not text1 or not text2:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Usage: /drake text1:<no> text2:<yes> (or reply to text)",
                 reply_to_message_id=M.message_id,
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             f"&text2={quote_plus(text2)}"
         )
 
-        await self.client.send_photo(
+        await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=url,
             reply_to_message_id=M.message_id,

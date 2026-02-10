@@ -86,7 +86,7 @@ class Command(BaseCommand):
                     f"\n{caption or ''}"
                 )
                 
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=text,
                     parse_mode="HTML",

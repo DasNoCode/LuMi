@@ -27,7 +27,7 @@ class Command(BaseCommand):
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         username: list[str] = context.get("text", [])
         if not username:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Please provide a GitHub username.",
                 reply_to_message_id=M.message_id,
@@ -39,7 +39,7 @@ class Command(BaseCommand):
         )
 
         if data.get("error"):
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ GitHub user not found.",
                 reply_to_message_id=M.message_id,
@@ -52,19 +52,19 @@ class Command(BaseCommand):
         text: str = (
             f'<a href="{avatar_url}">&#8204;</a>'
             "<blockquote>"
-            "👨🏻‍💻 <b>GitHub Information:</b>\n"
-            f"├ <b>Name:</b> {info['name']}\n"
+            "👨🏻‍💻 <b>『GitHub Information』</b>\n"
+            f"├ <b>Name:</b> {info.get('name') or '—'}\n"
             f"├ <b>Username:</b> {username}\n"
-            f"├ <b>Account Type:</b> {info['account_type']}\n"
-            f"├ <b>Public Repos:</b> {info['public_repos']}\n"
-            f"├ <b>Followers:</b> {info['followers']}\n"
-            f"├ <b>Following:</b> {info['following']}\n"
-            f"├ <b>Location:</b> {info['location']}\n"
-            f"└ <b>Bio:</b> {info['bio']}"
+            f"├ <b>Account Type:</b> {info.get('account_type') or '—'}\n"
+            f"├ <b>Public Repos:</b> {info.get('public_repos', 0)}\n"
+            f"├ <b>Followers:</b> {info.get('followers', 0)}\n"
+            f"├ <b>Following:</b> {info.get('following', 0)}\n"
+            f"├ <b>Location:</b> {info.get('location') or '—'}\n"
+            f"└ <b>Bio:</b> {info.get('bio') or '—'}"
             "</blockquote>"
         )
 
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text=text,
             parse_mode="HTML",

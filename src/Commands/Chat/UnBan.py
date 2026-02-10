@@ -38,7 +38,7 @@ class Command(BaseCommand):
                 users.extend(M.mentioned)
 
             if not users:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❗ Please mention at least one user or reply to their message to unban them.",
                     reply_to_message_id=M.message_id,
@@ -58,7 +58,7 @@ class Command(BaseCommand):
                     user_id=user.user_id,
                 )
                 self.client.db.manage_banned_user(chat_id=M.chat_id, user_id=user.user_id, ban=False)
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=f"✅ User with ID {user.user_id} has been unbanned.",
                 )
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
             
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Failed to unban user(s).",
                 reply_to_message_id=M.message_id,

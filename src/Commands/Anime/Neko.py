@@ -28,7 +28,7 @@ class Command(BaseCommand):
             results = res.get("results", [])
 
             if not results:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="<blockquote>❌ <b>No neko found right now.</b></blockquote>",
                     reply_to_message_id=M.message_id,
@@ -49,7 +49,7 @@ class Command(BaseCommand):
                 "</blockquote>"
             )
 
-            await self.client.send_photo(
+            await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
                 caption=caption,
@@ -58,7 +58,7 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ <b>Failed to fetch neko image.</b>",
                 reply_to_message_id=M.message_id,

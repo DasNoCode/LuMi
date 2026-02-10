@@ -37,7 +37,7 @@ class Command(BaseCommand):
             bots.append(f"├@{user.username}")
 
         if not bots:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="ℹ️ No bots found in this chat.",
                 reply_to_message_id=M.message_id,
@@ -51,7 +51,7 @@ class Command(BaseCommand):
             "\n</blockquote>"
         )
 
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text=text,
             parse_mode="HTML",

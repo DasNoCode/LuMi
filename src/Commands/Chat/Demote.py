@@ -39,7 +39,7 @@ class Command(BaseCommand):
                 users.extend(M.mentioned)
 
             if not users:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❗ Please mention at least one user or reply to their message to demote them.",
                     reply_to_message_id=M.message_id,
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             for user in users:
 
                 if user.user_id == M.sender.user_id:
-                    await self.client.send_message(
+                    await self.client.bot.send_message(
                         chat_id=M.chat_id,
                         text="❌ You can't demote yourself.",
                         reply_to_message_id=M.message_id,
@@ -60,7 +60,7 @@ class Command(BaseCommand):
                     M.chat_id, user.user_id
                 )
                 if member.status == "creator":
-                    await self.client.send_message(
+                    await self.client.bot.send_message(
                         chat_id=M.chat_id,
                         text=f"❌ Cannot demote group owner: {user.user_full_name}",
                         reply_to_message_id=M.message_id,
@@ -68,7 +68,7 @@ class Command(BaseCommand):
                     continue
 
                 if user.user_id == M.bot_user_id:
-                    await self.client.send_message(
+                    await self.client.bot.send_message(
                         chat_id=M.chat_id,
                         text="❌ I can't demote myself.",
                         reply_to_message_id=M.message_id,
@@ -89,7 +89,7 @@ class Command(BaseCommand):
                     is_anonymous=False,
                 )
 
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=f"✅ Demoted @{user.user_name or user.user_full_name} to regular user.",
                     reply_to_message_id=M.message_id,
@@ -99,7 +99,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
             
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,

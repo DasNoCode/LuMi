@@ -31,7 +31,7 @@ class Command(BaseCommand):
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         reply = M.reply_to_user
         if not reply or not M.reply_to_message.text:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Reply to a user to generate the message.",
                 reply_to_message_id=M.message_id,

@@ -28,7 +28,7 @@ class Command(BaseCommand):
     async def exec(self, M: Message, context: list[Any]) -> None:
         query = context.get("text", "")
         if not query:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="<blockquote>❌ <b>You forgot to provide a manga name.</b></blockquote>",
                 reply_to_message_id=M.message_id,
@@ -42,7 +42,7 @@ class Command(BaseCommand):
             )
 
             if not mangas:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
                         "<blockquote>"
@@ -75,7 +75,7 @@ class Command(BaseCommand):
                     "</blockquote>\n"
                 )
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text.strip(),
                 reply_to_message_id=M.message_id,
@@ -83,7 +83,7 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ <b>Failed to fetch manga information.</b>",
                 reply_to_message_id=M.message_id,

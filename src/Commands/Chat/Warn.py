@@ -17,7 +17,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "warn",
-                "category": "moderation",
+                "category": "chat",
                 "description": {
                     "content": "Warn a user. Kicks at 3 warns.",
                     "usage": "<reply or mention> [reason]",
@@ -35,7 +35,7 @@ class Command(BaseCommand):
             users.extend(M.mentioned)
 
         if not users:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Reply to a user or mention them to warn.",
                 reply_to_message_id=M.message_id,
@@ -51,8 +51,10 @@ class Command(BaseCommand):
 
             count: int = self.client.db.add_warn(
                 chat_id=M.chat_id,
+                user_full_name= user.user_full_name,
                 user_id=user.user_id,
                 reason=reason,
+                by_user_id=M.sender.user_id
             )
 
             if count >= 3:
@@ -65,9 +67,9 @@ class Command(BaseCommand):
                     "<blockquote>"
                     "<b>🚫 User Kicked</b>\n"
                     f"├ User: {user.user_full_name}\n"
-                    f"├ By: @{M.sender.user_name}"
+                    f"├ By: @{M.sender.user_name}\n"
                     "├ Warns: 3/3\n"
-                    "└ Reason: Reached maximum warnings"
+                    f"└ Reason: {reason or 'No reason provided'}"
                     "</blockquote>"
                 )
             else:
@@ -75,13 +77,13 @@ class Command(BaseCommand):
                     "<blockquote>"
                     "<b>⚠️ User Warned</b>\n"
                     f"├ User: {user.user_full_name}\n"
-                    f"├ By: @{M.sender.user_name}"
+                    f"├ By: @{M.sender.user_name}\n"
                     f"├ Warns: {count}/3\n"
                     f"└ Reason: {reason or 'No reason provided'}"
                     "</blockquote>"
                 )
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text,
                 reply_to_message_id=M.message_id,

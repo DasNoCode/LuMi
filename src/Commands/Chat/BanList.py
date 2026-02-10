@@ -17,7 +17,7 @@ class Command(BaseCommand):
             {
                 "command": "bans",
                 "aliases": ["banlist"],
-                "category": "moderation",
+                "category": "chat",
                 "description": {
                     "content": "Show all banned users in this chat.",
                 },
@@ -32,7 +32,7 @@ class Command(BaseCommand):
         bans: list[dict[str, Any]] = getattr(group, "bans", []) or []
 
         if not bans:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="ℹ️ No users are banned in this chat.",
                 reply_to_message_id=M.message_id,
@@ -56,7 +56,7 @@ class Command(BaseCommand):
                 "</blockquote>"
             )
 
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="\n".join(blocks),
             parse_mode="HTML",

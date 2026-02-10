@@ -47,7 +47,7 @@ class Command(BaseCommand):
             f"?image={quote_plus(image_url)}"
         )
 
-        await self.client.send_photo(
+        await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=ad_url,
             reply_to_message_id=M.message_id,

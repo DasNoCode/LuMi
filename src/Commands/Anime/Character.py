@@ -29,7 +29,7 @@ class Command(BaseCommand):
         query = context.get("text", "")
 
         if not query:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="<blockquote>❌ <b>Please provide a character name.</b></blockquote>",
                 reply_to_message_id=M.message_id,
@@ -43,7 +43,7 @@ class Command(BaseCommand):
             )
 
             if not characters:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
                         "<blockquote>"
@@ -76,7 +76,7 @@ class Command(BaseCommand):
 
             text += "</blockquote>"
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text.strip(),
                 reply_to_message_id=M.message_id,
@@ -84,7 +84,7 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ <b>Failed to fetch character data.</b>",
                 reply_to_message_id=M.message_id,

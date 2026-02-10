@@ -68,7 +68,7 @@ class Command(BaseCommand):
                 pass
             return
 
-        await self.client.send_photo(
+        await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo="src/Assets/bot_image.jpg",
             caption=f"👋 <b>Hello {user_mention}, I'm Lumi! ✨</b>",

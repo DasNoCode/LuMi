@@ -1,24 +1,24 @@
 from __future__ import annotations
 import asyncio
+from io import BytesIO
 import os
 from pathlib import Path
-from types import CoroutineType
+import random
+import time
 import pkg_resources
 from typing import (
     TYPE_CHECKING,
-    AsyncGenerator,
     Iterable,
+    Tuple,
     Union,
     Optional,
     List,
-    Sequence,
     Any
 )
 
 from telegram import (
     Bot,
     Update,
-    InputMedia,
     User
 )
 from telegram.ext import (
@@ -31,23 +31,18 @@ from telegram.ext import (
     filters,
     JobQueue
 )
-
-from telegram._utils.defaultvalue import DEFAULT_NONE
-from telegram._utils.types import ODVInput, JSONDict
+from telegram.error import NetworkError
+import httpx
+from telegram.request import HTTPXRequest
 from pyromod import Client as PyroClient
-from dotenv import load_dotenv, set_key
+from dotenv import set_key
 from Helpers import Utils, get_logger
-
+from io import BytesIO
+from PIL import Image
 
 if TYPE_CHECKING:
-    from telegram import (
-        ChatMember,
-        Message as TgMessage,
-        User as TgUser,
-        ReactionType,
-    )
     from pyrogram.types import User as PyroUser
-    from pyrogram import enums
+
 
 
 class SuperClient:
@@ -70,9 +65,15 @@ class SuperClient:
         self.owner_user_name: str = config.owner_user_name
         self.log = get_logger()
         self.utils = Utils(self.log, config)
-
+        self._wtp_index = 0
+        request = HTTPXRequest(
+            connect_timeout=10,
+            read_timeout=20,
+            write_timeout=20,
+            pool_timeout=10,
+        )
         self._app: Application = (
-            ApplicationBuilder().token(config.app_token).build()
+            ApplicationBuilder().token(config.app_token).request(request).build()
         )
         self.bot: Bot = self._app.bot
         self.interaction_store: dict[tuple[int, int], dict[str, Any]] = {}
@@ -94,6 +95,72 @@ class SuperClient:
     def job_queue(self) -> Optional["JobQueue[Any]"]:
         return self._app.job_queue
 
+    def start_whos_that_pokemon_scheduler(self) -> None:
+        if self.job_queue.get_jobs_by_name("whos_that_pokemon_loop"):
+            return
+    
+        delay = random.choice((20, 30, 40)) # seconds
+    
+        self.job_queue.run_once(
+            SuperClient.whos_that_pokemon_job,
+            when=delay* 60,
+            data=self,
+            name="whos_that_pokemon_loop",
+        )
+
+    async def whos_that_pokemon_job(
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        self: "SuperClient" = context.job.data
+    
+        chats = [
+            chat.chat_id
+            for chat in self.db.get_all_chats()
+            if chat.whos_that_pokemon
+        ]
+    
+        if not chats:
+            return
+    
+        chat_id = chats[self._wtp_index % len(chats)]
+        self._wtp_index += 1
+        pokemon_image_url, pokemon_name = self.utils.get_random_pokemon()
+        print(pokemon_name)
+        photo_bytes = await self.utils.generate_guess_pokemon(pokemon_image_url, pokemon_name, True)
+        png_io = BytesIO(photo_bytes)
+        jpeg_io = BytesIO()
+        
+        with Image.open(png_io) as img:
+            img = img.convert("RGB")  # JPEG requires RGB
+            img.save(jpeg_io, format="JPEG", quality=85, optimize=True)
+        
+        jpeg_io.seek(0)
+
+        key: Tuple[int, int] = ("whos_that_pokemon", chat_id)
+        now = int(time.time())
+        self.interaction_store[key] = {
+            "pokemon_name": pokemon_name,
+            "url": pokemon_image_url,
+            "sent_at": now,
+            "expires_at": now + 60,
+        }
+        try:
+            await self.bot.send_photo(
+                chat_id=chat_id,
+                photo=jpeg_io,
+                caption="『Whos That Pokémon』\n├ Time: 60 secs\n└ Use: /guess <pokemon name>",
+            )
+        except (NetworkError, httpx.ReadError):
+            self.log.warning(f"[WTP] Failed to send image to {chat_id}")
+    
+        delay = random.choice((20, 30, 40))
+        self.job_queue.run_once(
+            SuperClient.whos_that_pokemon_job,
+            when=delay* 60,
+            data=self,
+            name="whos_that_pokemon_loop",
+        )
+
     async def bot_info(self) -> None:
         env_user_id = os.getenv("BOT_USER_ID")
         env_user_name = os.getenv("BOT_USER_NAME")
@@ -102,7 +169,7 @@ class SuperClient:
             self.bot_user_id = int(env_user_id)
             self.bot_user_name = env_user_name
         else:
-           me: User = await self.get_me()
+           me: User = await self.bot.get_me()
    
            self.bot_user_id = me.id
            self.bot_user_name = me.username or ""
@@ -156,88 +223,10 @@ class SuperClient:
         self.db.set_user_profile_photo(user_id, avatar_url)
         return avatar_url
 
-    async def send_message(
-        self, chat_id: Union[int, str], text: str, **kwargs
-    ) -> TgMessage:
-        return await self.bot.send_message(chat_id=chat_id, text=text, **kwargs)
-
-    async def send_photo(
-        self, chat_id: Union[int, str], photo: Union[str, bytes], **kwargs
-    ) -> TgMessage:
-        return await self.bot.send_photo(chat_id=chat_id, photo=photo, **kwargs)
-
-    async def send_document(
-        self, chat_id: Union[int, str], document: Union[str, bytes], **kwargs
-    ) -> TgMessage:
-        return await self.bot.send_document(
-            chat_id=chat_id, document=document, **kwargs
-        )
-
-    async def send_media_group(
-        self, chat_id: Union[int, str], media: List[InputMedia], **kwargs
-    ) -> List[TgMessage]:
-        return await self.bot.send_media_group(
-            chat_id=chat_id, media=media, **kwargs
-        )
     async def kick_chat_member(self, chat_id: Union[int, str], user_id: int ) -> None:
         await self.bot.ban_chat_member(chat_id=chat_id, user_id=user_id)
         await self.bot.unban_chat_member(chat_id=chat_id, user_id=user_id)
-       
-    async def set_reaction(
-        self,
-        chat_id: Union[str, int],
-        message_id: int,
-        reaction: Optional[
-            Union[Sequence[Union[ReactionType, str]], ReactionType, str]
-        ] = None,
-        is_big: Optional[bool] = None,
-        *,
-        read_timeout: ODVInput[float] = DEFAULT_NONE,
-        write_timeout: ODVInput[float] = DEFAULT_NONE,
-        connect_timeout: ODVInput[float] = DEFAULT_NONE,
-        pool_timeout: ODVInput[float] = DEFAULT_NONE,
-        api_kwargs: Optional[JSONDict] = None,
-    ) -> bool:
-        try:
-            return await self.bot.set_message_reaction(
-                chat_id=chat_id,
-                message_id=message_id,
-                reaction=reaction,
-                is_big=is_big,
-                read_timeout=read_timeout,
-                write_timeout=write_timeout,
-                connect_timeout=connect_timeout,
-                pool_timeout=pool_timeout,
-                api_kwargs=api_kwargs,
-            )
-        except Exception as e:
-            self.log.error(f"[ERROR] [set_reaction] {e}")
-            return False
-
-    async def get_me(self) -> TgUser:
-        return await self.bot.get_me()
-
-    async def get_chat_member(
-        self,
-        chat_id: Union[str, int],
-        user_id: int,
-        *,
-        read_timeout: Optional[float] = None,
-        write_timeout: Optional[float] = None,
-        connect_timeout: Optional[float] = None,
-        pool_timeout: Optional[float] = None,
-        api_kwargs: Optional[dict] = None,
-    ) -> ChatMember:
-        return await self.bot.get_chat_member(
-            chat_id=chat_id,
-            user_id=user_id,
-            read_timeout=read_timeout,
-            write_timeout=write_timeout,
-            connect_timeout=connect_timeout,
-            pool_timeout=pool_timeout,
-            api_kwargs=api_kwargs,
-        )
-        
+               
     async def get_profile_id(self, user_id: int) -> Optional[str]:
         try:
             photos = await self.bot.get_user_profile_photos(user_id, limit=1)
@@ -307,6 +296,7 @@ class SuperClient:
         self._log_installed_packages()
         self._log_ascii_banner("TELEGRAM BOT ONLINE")
         self.command_handler.load_commands("src/Commands")
+        self.start_whos_that_pokemon_scheduler()
         self.pyrogram_Client.start()
         self._app.run_polling()
 

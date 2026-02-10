@@ -29,7 +29,7 @@ class Command(BaseCommand):
         query = context.get("text", "")
 
         if not query or not query.isdigit():
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="<blockquote>❌ <b>Please provide a valid character ID.</b></blockquote>",
                 reply_to_message_id=M.message_id,
@@ -43,7 +43,7 @@ class Command(BaseCommand):
             )
 
             if not result:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
                         "<blockquote>"
@@ -75,7 +75,7 @@ class Command(BaseCommand):
             )
 
             image = self.client.utils.fetch_buffer(character["imageUrl"])
-            await self.client.send_photo(
+            await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
                 caption=text,
@@ -84,7 +84,7 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ <b>Failed to fetch character information.</b>",
                 reply_to_message_id=M.message_id,

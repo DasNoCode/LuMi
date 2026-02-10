@@ -40,7 +40,7 @@ class Command(BaseCommand):
                users.extend(M.mentioned)
    
            if not users:
-               await self.client.send_message(
+               await self.client.bot.send_message(
                    chat_id=M.chat_id,
                    text="❗ Reply to a user or mention at least one user to unmute.",
                    reply_to_message_id=M.message_id,
@@ -58,7 +58,7 @@ class Command(BaseCommand):
                )
    
                if already_unmuted:
-                   await self.client.send_message(
+                   await self.client.bot.send_message(
                        chat_id=M.chat_id,
                        text=f"⚠️ {user.user_full_name or user.user_name} is not muted.",
                    )
@@ -70,7 +70,7 @@ class Command(BaseCommand):
                    permissions=ChatPermissions.all_permissions(),
                )
    
-               await self.client.send_message(
+               await self.client.bot.send_message(
                    chat_id=M.chat_id,
                    text=f"🔊 {user.user_full_name or user.user_name} has been unmuted.",
                )
@@ -78,7 +78,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
         
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,

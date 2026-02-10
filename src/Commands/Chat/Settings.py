@@ -50,7 +50,7 @@ class Command(BaseCommand):
                            M.chat_id, self.client.bot.id
                        )
                        if not getattr(me, "can_restrict_members", False):
-                           await self.client.send_message(
+                           await self.client.bot.send_message(
                                chat_id=M.chat_id,
                                text="❌ I need <b>can_restrict_members</b> permission to enable captcha.",
                                parse_mode="HTML",
@@ -95,7 +95,7 @@ class Command(BaseCommand):
                    parse_mode="HTML",
                )
            else:
-               await self.client.send_message(
+               await self.client.bot.send_message(
                    chat_id=M.chat_id,
                    text=text,
                    reply_markup=keyboard,
@@ -105,7 +105,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
             
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,

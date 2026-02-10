@@ -45,14 +45,14 @@ class Command(BaseCommand):
                 photo_file_id = M.reply_to_message.photo[0].file_id
 
             if not photo_file_id:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❗ Please reply to a photo or send one with the command.",
                     reply_to_message_id=M.message_id,
                 )
                 return
 
-            loading = await self.client.send_message(
+            loading = await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="👨‍💻",
                 reply_to_message_id=M.message_id,
@@ -73,7 +73,7 @@ class Command(BaseCommand):
                     message_id=loading.message_id,
                 )
 
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="✅ Group profile picture updated successfully!",
                     reply_to_message_id=M.message_id,
@@ -87,7 +87,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ Telegram network issue. Please try again.",
                 reply_to_message_id=M.message_id,
@@ -97,7 +97,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,

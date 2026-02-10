@@ -39,7 +39,7 @@ class Command(BaseCommand):
             users.extend(M.mentioned)
 
         if not users:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❗ Reply to a user or mention at least one user to mute.",
                 reply_to_message_id=M.message_id,
@@ -56,7 +56,7 @@ class Command(BaseCommand):
                 label = f"{minutes} minutes"
                 explicit = True
             except (TypeError, ValueError):
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ Invalid time value. Use time:<minutes>",
                     reply_to_message_id=M.message_id,
@@ -79,7 +79,7 @@ class Command(BaseCommand):
             )
 
             if already_muted and not explicit:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=f"⚠️ {user.user_full_name or user.user_name} is already muted.",
                 )
@@ -92,7 +92,7 @@ class Command(BaseCommand):
                 until_date=until_date,
             )
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=f"🔇 {user.user_full_name or user.user_name} muted for {label}.",
             )

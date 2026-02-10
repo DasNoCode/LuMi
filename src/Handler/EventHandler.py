@@ -55,7 +55,7 @@ class EventHandler:
                     f"Tap the button below 👇"
                 )
 
-                await self._client.send_message(
+                await self._client.bot.send_message(
                     chat_id=M.chat_id, text=text, reply_markup=keyboard
                 )
                 return
@@ -66,19 +66,19 @@ class EventHandler:
             else:
                 text = f"👋 @{name} joined the chat."
 
-            await self._client.send_message(chat_id=M.chat_id, text=text)
+            await self._client.bot.send_message(chat_id=M.chat_id, text=text)
             return
 
         if M.event_type == "leave":
             name: str = M.event_user.user_name or M.event_user.user_full_name
-            msg = await self._client.send_message(
+            msg = await self._client.bot.send_message(
                 chat_id=M.chat_id, text=f"👋 @{name} left the chat."
             )
 
         if M.event_type == "kick":
             name: str = M.event_user.user_name or M.event_user.user_full_name
             by: str = M.action_by.user_name or M.action_by.user_full_name
-            msg = await self._client.send_message(
+            msg = await self._client.bot.send_message(
                 chat_id=M.chat_id, text=f"❌ @{name} was removed by @{by}."
             )
             

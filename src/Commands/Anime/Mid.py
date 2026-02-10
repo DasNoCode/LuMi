@@ -27,7 +27,7 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: list[Any]) -> None:
         if not (int(context.get("text", ""))):
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="<blockquote>❌ <b>You must provide a valid manga ID.</b></blockquote>",
                 reply_to_message_id=M.message_id,
@@ -43,7 +43,7 @@ class Command(BaseCommand):
             )
 
             if not results:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="<blockquote>🤔 <b>No manga found for this ID.</b></blockquote>",
                     reply_to_message_id=M.message_id,
@@ -72,7 +72,7 @@ class Command(BaseCommand):
             )
 
             image = self.client.utils.fetch_buffer(manga["coverImage"])
-            await self.client.send_photo(
+            await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
                 caption=text,
@@ -81,7 +81,7 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ <b>Failed to fetch manga details.</b>",
                 reply_to_message_id=M.message_id,

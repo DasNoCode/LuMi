@@ -20,7 +20,7 @@ class Command(BaseCommand):
             {
                 "command": "stealpack",
                 "aliases": ["clonepack"],
-                "category": "general",
+                "category": "sticker",
                 "description": {
                     "content": "Clone a sticker pack by replying to a sticker.",
                     "usage": "<reply to a sticker>",
@@ -34,14 +34,14 @@ class Command(BaseCommand):
         
         reply = M.reply_to_message
         if not reply or not reply.sticker:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Reply to a sticker to clone its pack.",
                 reply_to_message_id=M.message_id,
             )
             return
 
-        loading = await self.client.send_message(
+        loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="🪄",
             reply_to_message_id=M.message_id,
@@ -105,7 +105,7 @@ class Command(BaseCommand):
             )
             await self.client.db.add_sticker_sets(pack_name=new_pack_name, pack_title=new_pack_title, format=pack_type, creator_user_id=M.sender.user_id)
             await self.client.bot.delete_message(M.chat_id, loading.message_id)
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=(
                     "✅ Sticker pack cloned successfully!\n"
@@ -117,7 +117,7 @@ class Command(BaseCommand):
             )
 
         except BadRequest as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Failed to clone sticker pack. Telegram rejected the request.",
                 reply_to_message_id=M.message_id,
@@ -126,7 +126,7 @@ class Command(BaseCommand):
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
         
         except Exception as e:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Failed to clone sticker pack due to an unexpected error.",
                 reply_to_message_id=M.message_id,

@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "sticker",
                 "aliases": ["s"],
-                "category": "general",
+                "category": "sticker",
                 "description": {
                     "content": "Convert replied media to a sticker without creating a sticker set.",
                     "usage": "<reply to photo | gif | video>",
@@ -29,7 +29,7 @@ class Command(BaseCommand):
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         reply = M.reply_to_message
         if not reply or not (reply.photo or reply.video or reply.animation):
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Reply to a photo, GIF, or video.",
                 reply_to_message_id=M.message_id,
@@ -44,7 +44,7 @@ class Command(BaseCommand):
             else reply.photo[-1].file_id
         )
 
-        loading = await self.client.send_message(
+        loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="🔮",
             reply_to_message_id=M.message_id,

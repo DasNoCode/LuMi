@@ -3,19 +3,16 @@ import os
 import re
 import random
 import base64
-import shutil
 import string
 import subprocess
-import tempfile
-import asyncio
 import imgbbpy
 import requests
-
 from pathlib import Path
 from bs4 import BeautifulSoup
 from captcha.image import ImageCaptcha
-from typing import Any, Optional, List, Set
-from moviepy.video.io.VideoFileClip import VideoFileClip
+from typing import Any, Final, Optional, List, Set, Tuple
+from playwright.async_api import async_playwright
+
 
 
 
@@ -259,7 +256,98 @@ class Utils:
                 str(output_path),
             ],
                     check=True,)
-      
+
+    @staticmethod
+    async def generate_guess_pokemon(
+        image_url: str,
+        name: str,
+        hidden: bool = True,
+    ) -> bytes:
+        title_text: Final[str] = "Who's That Pokémon?" if hidden else name
+    
+        html: Final[str] = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            @font-face {{
+              font-family: Pokemon;
+              src: url("file:///home/ryzendas/Desktop/Python-Telegram-Bot/src/Assets/PokemonSolid.ttf");
+            }}
+            body {{
+              margin: 0;
+              width: 1280px;
+              height: 720px;
+              background: #fff;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-family: Arial, sans-serif;
+            }}
+            .wrap {{
+              display: flex;
+              align-items: center;
+              gap: 64px;
+            }}
+            .title {{
+              font-family: Pokemon;
+              font-size: 90px;
+              color: #ffde00;
+              -webkit-text-stroke: 6px #1f4bd8;
+              letter-spacing: 5px;
+              text-align: center;
+            }}
+          </style>
+        </head>
+        <body>
+          <div class="wrap">
+            <img
+              src="{image_url}"
+              width="440"
+              height="440"
+              style="object-fit:contain;{'filter:brightness(0);' if hidden else ''}"
+            />
+            <div class="title">{title_text}</div>
+          </div>
+        </body>
+        </html>
+        """
+    
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page(viewport={"width": 1280, "height": 720})
+            await page.set_content(html)
+            image: bytes = await page.screenshot(
+                type="jpeg",
+                quality=80,
+            )
+            await browser.close()
+    
+        return image
+    
+    @staticmethod
+    def get_random_pokemon() -> tuple[str | None, str | None]:
+        url: str = "https://pokeapi.co/api/v2/pokemon/" + str(random.randint(1, 1010))
+    
+        try:
+            response = requests.get(
+                url,
+                timeout=10,
+                headers={"User-Agent": "TelegramBot/1.0"},
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            return None, None
+    
+        data: dict = response.json()
+    
+        name: str = data["name"].title()
+        image_url: str = (
+            data["sprites"]["other"]["official-artwork"]["front_default"]
+        )
+    
+        return image_url, name
 
     # --- formatting ---
     @staticmethod

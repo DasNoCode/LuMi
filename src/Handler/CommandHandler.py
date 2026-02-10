@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import traceback
+import time
 from datetime import datetime
 import os
 import importlib.util
@@ -108,9 +109,8 @@ class CommandHandler:
         get_user = lambda uid: self._client.db.get_user_by_user_id(
             uid or M.sender.user_id
         )
-
         sender: User = get_user(M.sender.user_id)
-
+        
         # --- AFK Check ---
         if sender.afk["status"]:
             if M.message[1:] == "afk":
@@ -139,7 +139,7 @@ class CommandHandler:
                     for i, msg in enumerate(msgs, 1)
                 )
         
-            await self._client.send_message(
+            await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text,
                 reply_to_message_id=M.message_id,
@@ -160,7 +160,7 @@ class CommandHandler:
              
         # --- Empty Command ---
         if M.message == self._client.config.prefix:
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=f"Please enter a command starting with {self._client.config.prefix}.",
                 reply_to_message_id=M.message_id,
@@ -177,7 +177,7 @@ class CommandHandler:
         )
 
         if not cmd:
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=f"❌ Unknown command! Use {self._client.config.prefix}help to see all available commands.",
                 reply_to_message_id=M.message_id,
@@ -189,7 +189,7 @@ class CommandHandler:
             banned_at_str = (
                 banned_at.strftime("%Y-%m-%d %H:%M:%S (%z)") if banned_at else "Unknown"
             )
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=(
                     "<blockquote>"
@@ -209,7 +209,7 @@ class CommandHandler:
         if not command_info.get("enabled", True):
             reason: str | None = command_info.get("reason")
         
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=(
                     f"<blockquote>"
@@ -222,14 +222,14 @@ class CommandHandler:
 
         # --- Chat/Private Command Validation ---
         if getattr(cmd.config, "OnlyChat", False) and M.chat_type == "private":
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text="👥 Chat-only command. Try this in a chat.",
                 reply_to_message_id=M.message_id,
             )
 
         if getattr(cmd.config, "OnlyChat", True) == "chat":
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text="💬 Please use this command in private chat only.",
                 reply_to_message_id=M.message_id,
@@ -240,7 +240,7 @@ class CommandHandler:
             getattr(cmd.config, "DevOnly", False)
             and M.Info.Sender.User not in self._client.config.mods
         ):
-            return await self._client.send_message(
+            return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text="⚠️ Oops! This command is only for developers.",
                 reply_to_message_id=M.message_id,
@@ -253,7 +253,7 @@ class CommandHandler:
             for perm in required_perms:
                 bot_perm: bool = await self._client.get_chat_member(M.chat_id, self._client.bot_user_id)
                 if not getattr(bot_perm, perm, True):
-                    return await self._client.send_message(
+                    return await self._client.bot.send_message(
                         chat_id=M.chat_id,
                         text=f"🤖 Bot must have '{perm}' permission to execute this command.",
                         reply_to_message_id=M.message_id,
@@ -263,7 +263,7 @@ class CommandHandler:
             for perm in required_perms:
                 has_perm: bool = M.sender.permissions.get(perm)
                 if not has_perm:
-                    return await self._client.send_message(
+                    return await self._client.bot.send_message(
                         chat_id=M.chat_id,
                         text=f"❌ You must have '{perm}' permission to run this command.",
                         reply_to_message_id=M.message_id,
@@ -293,7 +293,7 @@ class CommandHandler:
                 user_id=mentioned_user.user_id,
                 mentioned_msg_id=M.message_id,
             )
-            await self._client.send_message(
+            await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=(
                     f"@{mentioned_user.user_name or mentioned_user.user_full_name} "
@@ -315,4 +315,3 @@ class CommandHandler:
                 if rank_cmd:
                     await rank_cmd.exec(M, self._parse_args(f" caption:@{M.sender.user_name or M.sender.user_full_name} you levelled up 🎉!\n{old_level['level']} -> {new_level['level']}"))
                 
-    

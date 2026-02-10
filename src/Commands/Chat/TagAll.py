@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "tagall",
                 "aliases": ["all"],
-                "category": "moderation",
+                "category": "chat",
                 "description": {
                     "content": "Silently tag all chat admins. Limit 190",
                 },
@@ -28,7 +28,7 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        members = self.client.get_chat_members(M.chat_id)
+        members = self.client.bot.get_chat_members(M.chat_id)
         user_ids = [m.user.id async for m in members if not m.user.is_bot]
     
         if not user_ids:
@@ -38,7 +38,7 @@ class Command(BaseCommand):
             chunk = user_ids[i : i + 190]
             mentions = "".join(f'<a href="tg://user?id={uid}">\u200c</a>' for uid in chunk)
             
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=f"📢 @everyone {mentions}",
                 parse_mode=ParseMode.HTML

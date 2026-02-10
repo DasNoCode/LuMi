@@ -35,7 +35,7 @@ class Command(BaseCommand):
             chat_id=M.chat_id,
             permissions=ChatPermissions.no_permissions(),
         )
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text=f"🔒 Chat locked by {M.sender.user_name}.",
             reply_to_message_id=M.message_id,

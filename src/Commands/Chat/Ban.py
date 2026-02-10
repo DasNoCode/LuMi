@@ -37,7 +37,7 @@ class Command(BaseCommand):
                 users.extend(M.mentioned)
 
             if not users:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❗ Please mention at least one user or reply to their message to ban them.",
                     reply_to_message_id=M.message_id,
@@ -50,7 +50,7 @@ class Command(BaseCommand):
             for user in users:
                 member = await self.client.bot.get_chat_member(M.chat_id, user.user_id)
                 if member.status == "creator":
-                    await self.client.send_message(
+                    await self.client.bot.send_message(
                         chat_id=M.chat_id,
                         text=f"❌ Cannot ban group owner: {user.user_full_name or user.user_name}",
                         reply_to_message_id=M.message_id,
@@ -58,7 +58,7 @@ class Command(BaseCommand):
                     continue
 
                 if user.user_id == M.bot_userid:
-                    await self.client.send_message(
+                    await self.client.bot.send_message(
                         chat_id=M.chat_id,
                         text="❌ I can't ban myself.",
                         reply_to_message_id=M.message_id,
@@ -66,7 +66,7 @@ class Command(BaseCommand):
                     continue
                 
                 self.client.db.manage_banned_user(chat_id=M.chat_id, user_id=user.user_id, by_user_id=M.sender.user_id, ban=True, reason=reason)
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=f"✅ User with ID {user.user_id} has been banned."
                     + (f"\nReason: {reason}" if reason else ""),
@@ -80,7 +80,7 @@ class Command(BaseCommand):
             tb = traceback.extract_tb(e.__traceback__)[-1]
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
             
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Something went wrong. Please try again later.",
                 reply_to_message_id=M.message_id,

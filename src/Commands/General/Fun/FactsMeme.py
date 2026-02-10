@@ -30,7 +30,7 @@ class Command(BaseCommand):
         text: str = " ".join(context.get("text", [])).strip()
 
         if not text:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Please provide some text for the fact.",
                 reply_to_message_id=M.message_id,
@@ -40,7 +40,7 @@ class Command(BaseCommand):
         query: str = quote_plus(text)
         image_url: str = f"https://api.popcat.xyz/v2/facts?text={query}"
 
-        await self.client.send_photo(
+        await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=image_url,
             reply_to_message_id=M.message_id,

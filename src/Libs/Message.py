@@ -8,7 +8,7 @@ from telegram import (
 )
 from telegram.constants import ChatType, ChatMemberStatus
 from Helpers.JsonObject import JsonObject
-
+from telegram.error import NetworkError, TimedOut
 if TYPE_CHECKING:
     from telegram import Chat, User, ChatMember
     from Libs import SuperClient
@@ -149,7 +149,7 @@ class Message:
         self,
         user_id: int,
     ) -> Tuple[ChatMemberStatus, Optional[Dict[str, bool]]]:
-        member: ChatMember = await self._client.get_chat_member(
+        member: ChatMember = await self._client.bot.get_chat_member(
             self.chat_id,
             user_id,
         )
@@ -222,7 +222,11 @@ class Message:
         self.urls = self._client.utils.get_urls(self.message)
 
         if self.sender_raw:
-            role, perms = await self._get_user_permissions(self.sender_raw.id)
+            member = await self._get_user_permissions(self.sender_raw.id)
+            if member is None:
+                role, perms = None, None
+            else:
+                role, perms = member
             self.sender = JsonObject(
                 {
                     "user_id": self.sender_raw.id,

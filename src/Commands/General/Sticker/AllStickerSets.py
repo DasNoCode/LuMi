@@ -17,7 +17,7 @@ class Command(BaseCommand):
             {
                 "command": "stickersets",
                 "aliases": ["allsets", "sets"],
-                "category": "general",
+                "category": "sticker",
                 "description": {
                     "content": "List all sticker sets created using this bot.",
                 },
@@ -28,7 +28,7 @@ class Command(BaseCommand):
         sets: list[dict[str, Any]] = self.client.db.get_all_sticker_sets()
 
         if not sets:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="ℹ️ No sticker sets have been created yet.",
                 reply_to_message_id=M.message_id,
@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 "</blockquote>"
             )
 
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="\n".join(lines),
             parse_mode="HTML",

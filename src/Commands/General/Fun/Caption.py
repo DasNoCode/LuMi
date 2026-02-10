@@ -31,7 +31,7 @@ class Command(BaseCommand):
         text: str = flags.get("text") or context.get("text", "").strip()
 
         if not text:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Provide caption text.\nExample: <code>/caption text:Hello World</code>",
                 parse_mode="HTML",
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             f"&fontsize={fontsize}"
         )
 
-        await self.client.send_photo(
+        await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=api_url,
             reply_to_message_id=M.message_id,

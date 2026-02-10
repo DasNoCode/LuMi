@@ -20,7 +20,7 @@ class Command(BaseCommand):
             {
                 "command": "deleteset",
                 "aliases": ["delset"],
-                "category": "general",
+                "category": "sticker",
                 "description": {
                     "content": "Delete a sticker set created by you using this bot.",
                     "usage": "<reply to sticker> or <no args>",
@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 await self.client.bot.delete_sticker_set(name=pack_name)
                 self.client.db.delete_sticker_set(pack_name)
             except BadRequest as e:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ Failed to delete sticker set.",
                     reply_to_message_id=reply_to,
@@ -64,7 +64,7 @@ class Command(BaseCommand):
                 self._client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
                 return
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="✅ Sticker set deleted successfully.",
                 reply_to_message_id=reply_to,
@@ -76,7 +76,7 @@ class Command(BaseCommand):
             pack_title: str | None = reply.sticker.set_name
 
             if not pack_title:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ This sticker does not belong to a sticker set.",
                     reply_to_message_id=M.message_id,
@@ -92,7 +92,7 @@ class Command(BaseCommand):
                 None,
             )
             if not pack_name:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ Sticker packs isn't created by this bot, cannot be deleted.",
                     reply_to_message_id=M.message_id,
@@ -103,7 +103,7 @@ class Command(BaseCommand):
                 await self.client.bot.delete_sticker_set(name=pack_name)
                 self.client.db.delete_sticker_set(pack_name)
             except BadRequest as e:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ Failed to delete sticker set.",
                     reply_to_message_id=M.message_id,
@@ -112,7 +112,7 @@ class Command(BaseCommand):
                 self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
                 return
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="✅ Sticker set deleted successfully.",
                 reply_to_message_id=M.message_id,
@@ -120,7 +120,7 @@ class Command(BaseCommand):
             return
 
         if not user_sets:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="ℹ️ You don’t have any sticker sets yet.",
                 reply_to_message_id=M.message_id,
@@ -144,7 +144,7 @@ class Command(BaseCommand):
         if row:
             buttons.append(row)
 
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="🗑 Choose a sticker set to delete:",
             reply_markup=InlineKeyboardMarkup(buttons),

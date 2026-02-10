@@ -18,7 +18,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "captcha",
-                "category": "general",
+                "category": "chat",
                 "OnlyChat": True,
             },
         )
@@ -31,7 +31,7 @@ class Command(BaseCommand):
             chat_id=M.chat_id,
             message_id=M.message_id,
         )
-        loading = await self.client.send_message(
+        loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="🔑"
         )
@@ -41,7 +41,7 @@ class Command(BaseCommand):
         if not user_id:
             return
 
-        key: Tuple[int, int] = (M.chat_id, user_id)
+        key: Tuple[int, int] = ("captcha", M.chat_id, user_id)
         existing: Dict[str, Any] | None = self.client.interaction_store.get(key)
 
         captcha_code: str = self.client.utils.random_text()
@@ -71,7 +71,7 @@ class Command(BaseCommand):
             message_id=loading.message_id,
         )
         
-        sent_message = await self.client.send_photo(
+        sent_message = await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=self.client.utils.captcha_image(captcha_code),
             caption="🔐 Solve the captcha within 3 minutes.",
@@ -135,7 +135,7 @@ class Command(BaseCommand):
         )
 
         try:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=chat_id,
                 text="⏳ Captcha expired.\nPlease retry within 3 minutes.",
                 reply_markup=retry_markup,

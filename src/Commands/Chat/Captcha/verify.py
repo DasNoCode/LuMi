@@ -18,7 +18,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "verify",
-                "category": "general",
+                "category": "chat",
                 "OnlyChat": True,
             },
         )
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         if not user_id or not value:
             return
 
-        key: Tuple[int, int] = (M.chat_id, user_id)
+        key: Tuple[int, int] = ("verify", M.chat_id, user_id)
 
         captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
         if not captcha_data:
@@ -64,7 +64,7 @@ class Command(BaseCommand):
                 message_id=M.message_id,
             )
 
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=f"✅ Verified @{M.sender.user_name or M.sender.user_full_name}! You may chat now.",
             )

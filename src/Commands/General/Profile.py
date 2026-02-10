@@ -26,7 +26,7 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        loading = await self.client.send_message(
+        loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="⌨",
             reply_to_message_id=M.message_id,
@@ -60,7 +60,7 @@ class Command(BaseCommand):
             message_id=loading.message_id,
         )
 
-        await self.client.send_message(
+        await self.client.bot.send_message(
             chat_id=M.chat_id,
             text=text,
             parse_mode="HTML",

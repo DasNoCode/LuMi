@@ -54,7 +54,7 @@ class Command(BaseCommand):
                 pass
 
         try:
-            confirm = await self.client.send_message(
+            confirm = await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=f"✅ Cleared {len(message_ids)} messages.",
             )

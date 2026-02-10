@@ -21,7 +21,7 @@ class Command(BaseCommand):
             {
                 "command": "sticker_set",
                 "aliases": ["createset", "newpack", "sset"],
-                "category": "general",
+                "category": "sticker",
                 "description": {
                     "content": "Create or add to a sticker set from replied media.",
                     "usage": "<reply> emoji:✨ title:My Pack",
@@ -37,14 +37,14 @@ class Command(BaseCommand):
         title: str | None = flags.get("title")
 
         if title and len(title) > 64:
-            await self.client.send_message(
+            await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text="❌ Title must be 64 characters or less.",
                 reply_to_message_id=M.message_id,
             )
             return
 
-        store_key = (M.chat_id, M.sender.user_id)
+        store_key = ("sticker", M.chat_id, M.sender.user_id)
         user_sets: List[Dict[str, Any]] = self.client.db.get_user_sticker_sets(M.sender.user_id)
 
         if M.is_callback:
@@ -72,7 +72,7 @@ class Command(BaseCommand):
         else:
             reply = M.reply_to_message
             if not reply or not (reply.photo or reply.video or reply.animation):
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ Reply to a photo, GIF, or video.",
                     reply_to_message_id=M.message_id,
@@ -125,7 +125,7 @@ class Command(BaseCommand):
                     ]
                 )
 
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="🗂 Choose a sticker set:",
                     reply_markup=InlineKeyboardMarkup(buttons),
@@ -136,7 +136,7 @@ class Command(BaseCommand):
             selected_set = None
             force_new = True
 
-        loading = await self.client.send_message(
+        loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="🔮",
             reply_to_message_id=origin_msg_id,
@@ -149,7 +149,7 @@ class Command(BaseCommand):
             input_path = Path(await self.client.download_media(file_id))
 
             if input_path.stat().st_size > 256 * 1024:
-                await self.client.send_message(
+                await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text="❌ File must be under 256 KB.",
                     reply_to_message_id=origin_msg_id,
