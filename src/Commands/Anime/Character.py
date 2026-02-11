@@ -26,70 +26,80 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        query = context.get("text", "")
-
+        query: str = context.get("text", "").strip()
+    
         if not query:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="<blockquote>❌ <b>Please provide a character name.</b></blockquote>",
+                text=(
+                    "❌ <b>『Missing Query』</b>\n"
+                    "└ <i>Please provide a character name.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
             return
-
+    
         try:
-            characters = self.client.utils.fetch(
+            characters: list[dict[str, Any]] = await self.client.utils.fetch(
                 f"https://weeb-api.vercel.app/character?search={query}"
             )
-
+    
             if not characters:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
-                        "<blockquote>"
-                        "🤔 <b>No characters found.</b>\n"
-                        "Try searching with a different name."
-                        "</blockquote>"
+                        "🤔 <b>『No Results』</b>\n"
+                        f"└ <i>No characters found for \"{query}\".</i>"
                     ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            text = (
+    
+            text: str = (
                 "<blockquote>"
-                f"👤 <b>Character Search Results</b>\n"
-                f"├ <b>Query:</b> {query}\n\n"
+                "👤 <b>『Character Search Results』</b>\n"
+                f"├ <b>Query:</b> {query}\n"
+                f"└ <b>Total Found:</b> {len(characters)}\n\n"
             )
-
+    
             for i, char in enumerate(characters, start=1):
-                gender = char.get("gender", "Unknown")
-                symbol = "🚺" if gender == "Female" else "🚹" if gender == "Male" else "🚻"
-
+                name: dict[str, str] = char.get("name", {})
+                gender: str = char.get("gender") or "Unknown"
+    
+                symbol: str = (
+                    "🚺" if gender == "Female"
+                    else "🚹" if gender == "Male"
+                    else "🚻"
+                )
+    
                 text += (
                     f"#{i}\n"
-                    f"├ <b>Full Name:</b> {char['name']['full']}\n"
-                    f"├ <b>Native Name:</b> {char['name']['native']}\n"
+                    f"├ <b>Full Name:</b> {name.get('full') or '—'}\n"
+                    f"├ <b>Native Name:</b> {name.get('native') or '—'}\n"
                     f"├ <b>Gender:</b> {gender} {symbol}\n"
-                    f"└ <b>More Info:</b> {self.client.prefix}cid {char['id']}\n\n"
+                    f"└ <b>More Info:</b> <code>{self.client.prefix}cid {char.get('id')}</code>\n\n"
                 )
-
+    
             text += "</blockquote>"
-
+    
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text.strip(),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch character data.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch character data.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
-            
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")
+                

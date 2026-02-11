@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -25,12 +25,17 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        username: list[str] = context.get("text", [])
+        username: str = (context.get("text", "") or "").strip()
+
         if not username:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ Please provide a GitHub username.",
+                text=(
+                    "❗ <b>『Missing Username』</b>\n"
+                    "└ <i>Please provide a GitHub username.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
@@ -41,13 +46,17 @@ class Command(BaseCommand):
         if data.get("error"):
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ GitHub user not found.",
+                text=(
+                    "❌ <b>『User Not Found』</b>\n"
+                    "└ <i>GitHub user does not exist.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
         info: dict[str, Any] = data["message"]
-        avatar_url: str = info["avatar"]
+        avatar_url: str = info.get("avatar")
 
         text: str = (
             f'<a href="{avatar_url}">&#8204;</a>'

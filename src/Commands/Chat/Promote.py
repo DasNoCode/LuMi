@@ -3,6 +3,7 @@ import traceback
 from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from telegram import User
     from Libs import SuperClient, Message
@@ -23,7 +24,7 @@ class Command(BaseCommand):
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
-                "admin_permissions": ["can_promote_members"]
+                "admin_permissions": ["can_promote_members"],
             },
         )
 
@@ -39,8 +40,12 @@ class Command(BaseCommand):
             if not users:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="❗ Please mention at least one user or reply to their message to promote them.",
+                    text=(
+                        "❗ <b>『Invalid Usage』</b>\n"
+                        "└ <i>Mention at least one user or reply to a message.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
                 return
 
@@ -49,27 +54,42 @@ class Command(BaseCommand):
                 if user.user_id == M.sender.user_id:
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text="❌ You can't promote yourself.",
+                        text=(
+                            "❌ <b>『Action Denied』</b>\n"
+                            "└ <i>You cannot promote yourself.</i>"
+                        ),
                         reply_to_message_id=M.message_id,
+                        parse_mode="HTML",
                     )
                     continue
 
                 member = await self.client.bot.get_chat_member(
-                    M.chat_id, user.user_id
+                    M.chat_id,
+                    user.user_id,
                 )
+
                 if member.status == "creator":
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text=f"❌ Cannot promote group owner: {user.user_full_name}",
+                        text=(
+                            "❌ <b>『Action Denied』</b>\n"
+                            f"└ <i>Cannot promote group owner: "
+                            f"{user.user_full_name}</i>"
+                        ),
                         reply_to_message_id=M.message_id,
+                        parse_mode="HTML",
                     )
                     continue
 
                 if user.user_id == M.bot_user_id:
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text="❌ I can't promote myself.",
+                        text=(
+                            "❌ <b>『Action Denied』</b>\n"
+                            "└ <i>I cannot promote myself.</i>"
+                        ),
                         reply_to_message_id=M.message_id,
+                        parse_mode="HTML",
                     )
                     continue
 
@@ -89,17 +109,27 @@ class Command(BaseCommand):
 
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text=f"✅ Promoted @{user.user_name or user.user_full_name} to admin!",
+                    text=(
+                        "✅ <b>『User Promoted』</b>\n"
+                        f"├ <b>User:</b> "
+                        f"{user.user_full_name or user.user_name}\n"
+                        f"└ <b>ID:</b> <code>{user.user_id}</code>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
 
         except Exception as e:
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
-            
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ Something went wrong. Please try again later.",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Something went wrong. Please try again later.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
- 

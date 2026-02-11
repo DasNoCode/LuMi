@@ -26,29 +26,37 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: list[Any]) -> None:
         try:
-            res = await self.client.utils.fetch("https://nekos.best/api/v2/husbando")
-            results = res.get("results", [])
-            
+            res: dict[str, Any] = await self.client.utils.fetch(
+                "https://nekos.best/api/v2/husbando"
+            )
+    
+            results: list[dict[str, Any]] = res.get("results", [])
+    
             if not results:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="<blockquote>❌ <b>No husbando found right now.</b></blockquote>",
+                    text=(
+                        "❌ <b>『Unavailable』</b>\n"
+                        "└ <i>No husbando found right now.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            image = self.client.utils.fetch_buffer(results[0].get('url'))
-
-            text = (
+    
+            data: dict[str, Any] = results[0]
+    
+            image = await self.client.utils.fetch_buffer(data.get("url"))
+    
+            text: str = (
                 "<blockquote>"
-                "🧔 <b>Husbando</b>\n"
-                f"├ <b>Source:</b> {results[0].get('source_url') or 'N/A'}\n"
-                f"├ <b>Artist Profile:</b> {results[0].get('artist_href') or 'N/A'}\n"
-                f"└ <b>Image:</b> {results[0].get('url') or 'N/A'}"
+                "🧔 <b>『Husbando』</b>\n"
+                f"├ <b>Source:</b> {data.get('source_url') or 'N/A'}\n"
+                f"├ <b>Artist Profile:</b> {data.get('artist_href') or 'N/A'}\n"
+                f"└ <b>Image URL:</b> {data.get('url') or 'N/A'}"
                 "</blockquote>"
             )
-
+    
             await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
@@ -56,16 +64,18 @@ class Command(BaseCommand):
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
-        except Exception as e:
+    
+        except Exception:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch husbando image.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch husbando image.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(f"[ERROR]\n{traceback.format_exc()}")
 
 
 

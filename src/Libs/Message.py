@@ -149,10 +149,18 @@ class Message:
         self,
         user_id: int,
     ) -> Tuple[ChatMemberStatus, Optional[Dict[str, bool]]]:
-        member: ChatMember = await self._client.bot.get_chat_member(
-            self.chat_id,
-            user_id,
-        )
+        try:
+            member: ChatMember = await self._client.bot.get_chat_member(
+                self.chat_id,
+                user_id,
+            )
+        except NetworkError as e:
+            member: ChatMember = await self._client.bot.get_chat_member(
+                self.chat_id,
+                user_id,
+            )
+            return self._client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: Unable to fetch user data!")
+            
         permissions: Optional[Dict[str, bool]] = {
             "can_change_info": getattr(member, "can_change_info", True),
             "can_delete_messages": getattr(member, "can_delete_messages", True),
@@ -256,3 +264,5 @@ class Message:
             self.mentioned.append(self.reply_to_user)
 
         return self
+
+

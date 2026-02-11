@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        user_mention: str = M.sender.user_name
+        user_mention: str = M.sender.user_name or M.sender.user_full_name
 
         if M.is_callback:
             try:
@@ -34,9 +34,11 @@ class Command(BaseCommand):
                     chat_id=M.chat_id,
                     message_id=M.message_id,
                     caption=(
-                        f"✨ <b>Welcome {user_mention}, I am Lumi!</b>\n\n"
-                        "<b>I am a group management bot!</b>\n"
-                        "With fun games and many anime commands."
+                        "✨ <b>『Welcome』</b>\n"
+                        f"├ <b>User:</b> {user_mention}\n"
+                        "├ <b>Name:</b> LuMi\n"
+                        "└ <i>Your all-in-one group management bot "
+                        "with fun games and anime commands!</i>"
                     ),
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup(
@@ -71,7 +73,11 @@ class Command(BaseCommand):
         await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo="src/Assets/bot_image.jpg",
-            caption=f"👋 <b>Hello {user_mention}, I'm Lumi! ✨</b>",
+            caption=(
+                "👋 <b>『Hello』</b>\n"
+                f"├ <b>User:</b> {user_mention}\n"
+                "└ <i>Tap below to explore Lumi ✨</i>"
+            ),
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [

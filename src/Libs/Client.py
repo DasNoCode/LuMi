@@ -103,7 +103,7 @@ class SuperClient:
     
         self.job_queue.run_once(
             SuperClient.whos_that_pokemon_job,
-            when=delay* 60,
+            when=delay*60,
             data=self,
             name="whos_that_pokemon_loop",
         )
@@ -124,8 +124,19 @@ class SuperClient:
     
         chat_id = chats[self._wtp_index % len(chats)]
         self._wtp_index += 1
-        pokemon_image_url, pokemon_name = self.utils.get_random_pokemon()
-        print(pokemon_name)
+        pokemon_image_url: str | None = None
+        pokemon_name: str | None = None
+        
+        for _ in range(3): 
+            pokemon_image_url, pokemon_name = self.utils.get_random_pokemon()
+            if pokemon_image_url and pokemon_name:
+                break
+        
+        if not pokemon_image_url or not pokemon_name:
+            self.log.warning("[WTP] Failed to get valid Pokémon after retries")
+            return
+        
+        print(pokemon_name, pokemon_image_url)
         photo_bytes = await self.utils.generate_guess_pokemon(pokemon_image_url, pokemon_name, True)
         png_io = BytesIO(photo_bytes)
         jpeg_io = BytesIO()
@@ -156,7 +167,7 @@ class SuperClient:
         delay = random.choice((20, 30, 40))
         self.job_queue.run_once(
             SuperClient.whos_that_pokemon_job,
-            when=delay* 60,
+            when=delay*60,
             data=self,
             name="whos_that_pokemon_loop",
         )

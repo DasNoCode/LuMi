@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -38,12 +38,20 @@ class Command(BaseCommand):
         target = M.reply_to_user or (M.mentioned[0] if M.mentioned else None)
 
         if target:
-            entry = next((w for w in warns if w["user_id"] == target.user_id), None)
+            entry = next(
+                (w for w in warns if w["user_id"] == target.user_id),
+                None,
+            )
+
             if not entry:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="ℹ️ This user has no warnings.",
+                    text=(
+                        "ℹ️ <b>『No Warnings』</b>\n"
+                        f"└ <i>{target.user_full_name} has no warnings.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
                 return
 
@@ -51,6 +59,7 @@ class Command(BaseCommand):
                 chat_id=M.chat_id,
                 text=(
                     "<blockquote>"
+                    "⚠️ <b>『User Warning Info』</b>\n"
                     f"├ <b>User:</b> {target.user_full_name}\n"
                     f"└ <b>Warnings:</b> {entry['count']}/3"
                     "</blockquote>"
@@ -63,8 +72,12 @@ class Command(BaseCommand):
         if not warns:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="ℹ️ No warned users in this chat.",
+                text=(
+                    "ℹ️ <b>『No Warned Users』</b>\n"
+                    "└ <i>No warned users in this chat.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
@@ -77,20 +90,18 @@ class Command(BaseCommand):
         chunk = warns[start:end]
 
         lines: list[str] = []
-        
-        for w in chunk:
-            lines.append(
-                "<blockquote>"
-                f"├ <b>User:</b> <a href=\"tg://user?id={w['user_id']}\">{w['user_full_name']}</a>\n"
-                f"└ <b>Warnings:</b> {w['count']}/3"
-                "</blockquote>"
-            )
-        
-        text = "\n".join(lines)
 
-        text = (
+        for i, w in enumerate(chunk):
+            prefix: str = "└" if i == len(chunk) - 1 else "├"
+            lines.append(
+                f"{prefix} <a href=\"tg://user?id={w['user_id']}\">"
+                f"{w['user_full_name']}</a> "
+                f"— {w['count']}/3"
+            )
+
+        text: str = (
             "<blockquote>"
-            "<b>⚠️ Warned Users</b>\n"
+            "⚠️ <b>『Warned Users』</b>\n"
             + "\n".join(lines)
             + f"\n└ <b>Page:</b> {page}/{total_pages}"
             "</blockquote>"

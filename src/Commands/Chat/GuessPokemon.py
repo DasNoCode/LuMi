@@ -4,6 +4,7 @@ from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
@@ -39,6 +40,7 @@ class Command(BaseCommand):
                 M.chat_id,
                 {"whos_that_pokemon": enabled},
             )
+
             self.client.start_whos_that_pokemon_scheduler()
 
             await self.client.bot.edit_message_text(
@@ -46,7 +48,7 @@ class Command(BaseCommand):
                 message_id=M.message_id,
                 text=(
                     "<blockquote>"
-                    "🎮 <b>Whos That Pokémon</b>\n"
+                    "🎮 <b>『Who's That Pokémon』</b>\n"
                     f"└ <b>Status:</b> {'Enabled ✅' if enabled else 'Disabled ❌'}"
                     "</blockquote>"
                 ),
@@ -70,13 +72,13 @@ class Command(BaseCommand):
         )
 
         chat = self.client.db.get_group_by_chat_id(M.chat_id)
-        enabled: bool = getattr(chat, "pokemon_enabled", True)
+        enabled: bool = getattr(chat, "whos_that_pokemon", False)
 
         await self.client.bot.send_message(
             chat_id=M.chat_id,
             text=(
                 "<blockquote>"
-                "🎮 <b>Who's That Pokémon</b>\n"
+                "🎮 <b>『Who's That Pokémon』</b>\n"
                 f"└ <b>Status:</b> {'Enabled ✅' if enabled else 'Disabled ❌'}"
                 "</blockquote>"
             ),

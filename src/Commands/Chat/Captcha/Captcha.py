@@ -31,17 +31,19 @@ class Command(BaseCommand):
             chat_id=M.chat_id,
             message_id=M.message_id,
         )
+
         loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
-            text="🔑"
+            text="🔑",
         )
+
         flags: Dict[str, Any] = context.get("flags", {})
         user_id: int = int(flags.get("user_id", 0))
 
         if not user_id:
             return
 
-        key: Tuple[int, int] = ("captcha", M.chat_id, user_id)
+        key: Tuple[str, int, int] = ("captcha", M.chat_id, user_id)
         existing: Dict[str, Any] | None = self.client.interaction_store.get(key)
 
         captcha_code: str = self.client.utils.random_text()
@@ -65,17 +67,21 @@ class Command(BaseCommand):
             ]
             for i in range(0, 4, 2)
         ]
-        
+
         await self.client.bot.delete_message(
             chat_id=M.chat_id,
             message_id=loading.message_id,
         )
-        
+
         sent_message = await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=self.client.utils.captcha_image(captcha_code),
-            caption="🔐 Solve the captcha within 3 minutes.",
+            caption=(
+                "🔐 <b>『Captcha Verification』</b>\n"
+                "└ <i>Solve the captcha within 3 minutes.</i>"
+            ),
             reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
         )
 
         asyncio.create_task(
@@ -94,7 +100,7 @@ class Command(BaseCommand):
     ) -> None:
         await asyncio.sleep(180)
 
-        key: Tuple[int, int] = (chat_id, user_id)
+        key: Tuple[str, int, int] = ("captcha", chat_id, user_id)
         captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
 
         if not captcha_data:
@@ -137,8 +143,12 @@ class Command(BaseCommand):
         try:
             await self.client.bot.send_message(
                 chat_id=chat_id,
-                text="⏳ Captcha expired.\nPlease retry within 3 minutes.",
+                text=(
+                    "⏳ <b>『Captcha Expired』</b>\n"
+                    "└ <i>Please retry within 3 minutes.</i>"
+                ),
                 reply_markup=retry_markup,
+                parse_mode="HTML",
             )
         except Exception:
             pass

@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import importlib.util
 from typing import List, Dict, Any, TYPE_CHECKING
+from httpx import NetworkError
 import telegram
 import random
 from Helpers import JsonObject, get_rank
@@ -251,7 +252,7 @@ class CommandHandler:
         
         if getattr(cmd.config, "OnlyAdmin", False):
             for perm in required_perms:
-                bot_perm: bool = await self._client.get_chat_member(M.chat_id, self._client.bot_user_id)
+                bot_perm: bool = await self._client.bot.get_chat_member(M.chat_id, self._client.bot_user_id)
                 if not getattr(bot_perm, perm, True):
                     return await self._client.bot.send_message(
                         chat_id=M.chat_id,
@@ -270,7 +271,10 @@ class CommandHandler:
                     )
 
         # --- Execute Command ---
-        await cmd.exec(M, context)
+        try:
+          await cmd.exec(M, context)
+        except NetworkError as e:
+            self._client.log.error("[NetworkError] Failed to exeute the command!")
 
         # --- Mention AFK Users ---
         users: list[User] = []
@@ -315,3 +319,5 @@ class CommandHandler:
                 if rank_cmd:
                     await rank_cmd.exec(M, self._parse_args(f" caption:@{M.sender.user_name or M.sender.user_full_name} you levelled up 🎉!\n{old_level['level']} -> {new_level['level']}"))
                 
+
+

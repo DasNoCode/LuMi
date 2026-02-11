@@ -7,6 +7,7 @@ from typing import Any, TYPE_CHECKING
 from telegram.error import NetworkError
 from Libs import BaseCommand
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
@@ -47,8 +48,12 @@ class Command(BaseCommand):
             if not photo_file_id:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="❗ Please reply to a photo or send one with the command.",
+                    text=(
+                        "❗ <b>『Invalid Usage』</b>\n"
+                        "└ <i>Reply to a photo or send one with the command.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
                 return
 
@@ -59,6 +64,7 @@ class Command(BaseCommand):
             )
 
             path: str | None = None
+
             try:
                 path = await self.client.download_media(photo_file_id)
 
@@ -75,8 +81,12 @@ class Command(BaseCommand):
 
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="✅ Group profile picture updated successfully!",
+                    text=(
+                        "🖼️ <b>『Chat Photo Updated』</b>\n"
+                        "└ <i>Group profile picture updated successfully.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
 
             finally:
@@ -84,21 +94,31 @@ class Command(BaseCommand):
                     os.remove(path)
 
         except NetworkError as e:
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )
 
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ Telegram network issue. Please try again.",
+                text=(
+                    "⚠️ <b>『Network Error』</b>\n"
+                    "└ <i>Telegram network issue. Please try again.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
 
         except Exception as e:
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )
 
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ Something went wrong. Please try again later.",
+                text=(
+                    "❌ <b>『Error』</b>\n"
+                    "└ <i>Something went wrong. Please try again later.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )

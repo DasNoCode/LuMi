@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
 from pyrogram import enums
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -34,20 +34,34 @@ class Command(BaseCommand):
             filter=enums.ChatMembersFilter.BOTS,
         ):
             user = member.user
-            bots.append(f"├@{user.username}")
+            username: str = (
+                f"@{user.username}"
+                if user.username
+                else user.first_name
+            )
+            bots.append(username)
 
         if not bots:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="ℹ️ No bots found in this chat.",
+                text=(
+                    "ℹ️ <b>『No Bots Found』</b>\n"
+                    "└ <i>There are no bots in this chat.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
-        text = (
+        lines: list[str] = []
+        for i, bot in enumerate(bots):
+            prefix: str = "└" if i == len(bots) - 1 else "├"
+            lines.append(f"{prefix} {bot}")
+
+        text: str = (
             "<blockquote>"
-            "<b>🤖 Bots in this chat</b>\n"
-            + "\n".join(bots) +
+            "🤖 <b>『Bots in This Chat』</b>\n"
+            + "\n".join(lines) +
             "\n</blockquote>"
         )
 

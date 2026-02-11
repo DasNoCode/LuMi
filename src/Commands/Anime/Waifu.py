@@ -24,31 +24,40 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: list[Any]) -> None:
         try:
-            res = await self.client.utils.fetch("https://nekos.best/api/v2/waifu")
-            results = res.get("results", [])
-
+            res: dict[str, Any] = await self.client.utils.fetch(
+                "https://nekos.best/api/v2/waifu"
+            )
+    
+            results: list[dict[str, Any]] = res.get("results", [])
+    
             if not results:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="<blockquote>❌ <b>No waifu found right now.</b></blockquote>",
+                    text=(
+                        "❌ <b>『Unavailable』</b>\n"
+                        "└ <i>No waifu found right now.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            waifu = results[0]
-            image = self.client.utils.fetch_buffer(waifu["url"])
-
-            caption = (
+    
+            waifu: dict[str, Any] = results[0]
+    
+            image = await self.client.utils.fetch_buffer(
+                waifu.get("url")
+            )
+    
+            caption: str = (
                 "<blockquote>"
-                "💖 <b>Here’s a Waifu for you!</b>\n"
-                f"├ <b>Artist:</b> {waifu['artist_name']}\n"
-                f"├ <b>Source:</b> {waifu['source_url']}\n"
-                f"├ <b>Artist Profile:</b> {waifu['artist_href']}\n"
-                f"└ <b>Image:</b> {waifu['url']}"
+                "💖 <b>『Waifu』</b>\n"
+                f"├ <b>Artist:</b> {waifu.get('artist_name') or 'Unknown'}\n"
+                f"├ <b>Source:</b> {waifu.get('source_url') or 'N/A'}\n"
+                f"├ <b>Artist Profile:</b> {waifu.get('artist_href') or 'N/A'}\n"
+                f"└ <b>Image URL:</b> {waifu.get('url') or 'N/A'}"
                 "</blockquote>"
             )
-
+    
             await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
@@ -56,13 +65,16 @@ class Command(BaseCommand):
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch waifu image.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch waifu image.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")
+    

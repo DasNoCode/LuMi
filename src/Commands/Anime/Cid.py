@@ -26,55 +26,68 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        query = context.get("text", "")
-
-        if not query or not query.isdigit():
+        query: str = context.get("text", "").strip()
+    
+        if not query.isdigit():
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="<blockquote>❌ <b>Please provide a valid character ID.</b></blockquote>",
+                text=(
+                    "❌ <b>『Invalid ID』</b>\n"
+                    "└ <i>Please provide a valid character ID.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
             return
-
+    
         try:
-            result = self.client.utils.fetch(
+            result: list[dict[str, Any]] = await self.client.utils.fetch(
                 f"https://weeb-api.vercel.app/character?search={query}"
             )
-
+    
             if not result:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
-                        "<blockquote>"
-                        "🤔 <b>No character found.</b>\n"
-                        "Try checking the ID and try again."
-                        "</blockquote>"
+                        "🤔 <b>『Not Found』</b>\n"
+                        "└ <i>No character found for this ID.</i>"
                     ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            character = result[0]
-            gender = character.get("gender", "Unknown")
-            symbol = "🚺" if gender == "Female" else "🚹" if gender == "Male" else "🚻"
-
-            text = (
+    
+            character: dict[str, Any] = result[0]
+            name: dict[str, str] = character.get("name", {})
+    
+            gender: str = character.get("gender") or "Unknown"
+            symbol: str = (
+                "🚺" if gender == "Female"
+                else "🚹" if gender == "Male"
+                else "🚻"
+            )
+    
+            description: str = character.get(
+                "description",
+                "No description available."
+            )
+    
+            text: str = (
                 "<blockquote>"
-                "👤 <b>Character Information</b>\n"
-                f"├ <b>Name:</b> {character['name']['full']}\n"
-                f"├ <b>Native:</b> {character['name']['native']}\n"
-                f"├ <b>ID:</b> <code>{character['id']}</code>\n"
-                f"├ <b>Age:</b> {character.get('age', 'Unknown')}\n"
+                "👤 <b>『Character Information』</b>\n"
+                f"├ <b>Name:</b> {name.get('full') or '—'}\n"
+                f"├ <b>Native:</b> {name.get('native') or '—'}\n"
+                f"├ <b>ID:</b> <code>{character.get('id')}</code>\n"
+                f"├ <b>Age:</b> {character.get('age') or 'Unknown'}\n"
                 f"├ <b>Gender:</b> {gender} {symbol}\n"
-                f"├ <b>AniList:</b> {character.get('siteUrl', 'N/A')}\n\n"
-                f"└ <b>Description:</b>\n"
-                f"{character.get('description', 'No description available.')}"
+                f"├ <b>AniList:</b> {character.get('siteUrl') or 'N/A'}\n\n"
+                f"└ <b>『Description』</b>\n"
+                f"{description}"
                 "</blockquote>"
             )
-
-            image = self.client.utils.fetch_buffer(character["imageUrl"])
+    
+            image = await self.client.utils.fetch_buffer(character["imageUrl"])
+    
             await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
@@ -82,14 +95,16 @@ class Command(BaseCommand):
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch character information.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch character information.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
-            
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")
+    

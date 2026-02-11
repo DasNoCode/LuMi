@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
 from telegram.constants import ParseMode
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -20,7 +20,7 @@ class Command(BaseCommand):
                 "aliases": ["all"],
                 "category": "chat",
                 "description": {
-                    "content": "Silently tag all chat admins. Limit 190",
+                    "content": "Silently tag all chat members. Limit 190 per batch.",
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
@@ -29,19 +29,38 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         members = self.client.bot.get_chat_members(M.chat_id)
-        user_ids = [m.user.id async for m in members if not m.user.is_bot]
-    
+
+        user_ids: list[int] = [
+            m.user.id
+            async for m in members
+            if not m.user.is_bot
+        ]
+
         if not user_ids:
-            return await M.reply("❌ No users found.")
-    
-        for i in range(0, len(user_ids), 190):
-            chunk = user_ids[i : i + 190]
-            mentions = "".join(f'<a href="tg://user?id={uid}">\u200c</a>' for uid in chunk)
-            
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=f"📢 @everyone {mentions}",
-                parse_mode=ParseMode.HTML
+                text=(
+                    "❌ <b>『No Users Found』</b>\n"
+                    "└ <i>No eligible users to tag.</i>"
+                ),
+                reply_to_message_id=M.message_id,
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        for i in range(0, len(user_ids), 190):
+            chunk = user_ids[i : i + 190]
+
+            mentions: str = "".join(
+                f'<a href="tg://user?id={uid}">\u200c</a>'
+                for uid in chunk
             )
 
-    
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    "📢 <b>『Tag All』</b>\n"
+                    f"└ @everyone {mentions}"
+                ),
+                parse_mode=ParseMode.HTML,
+            )

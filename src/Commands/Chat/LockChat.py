@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 from telegram import ChatPermissions
-
 from Libs import BaseCommand
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -24,27 +24,30 @@ class Command(BaseCommand):
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
-                "admin_permissions": ["can_restrict_members", "can_change_info"],
+                "admin_permissions": [
+                    "can_restrict_members",
+                    "can_change_info",
+                ],
             },
         )
+
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         chat = await self.client.bot.get_chat(M.chat_id)
+
         self.client.db.chat_perms(M.chat_id, chat.permissions)
 
         await self.client.bot.set_chat_permissions(
             chat_id=M.chat_id,
             permissions=ChatPermissions.no_permissions(),
         )
+
         await self.client.bot.send_message(
             chat_id=M.chat_id,
-            text=f"🔒 Chat locked by {M.sender.user_name}.",
+            text=(
+                "🔒 <b>『Chat Locked』</b>\n"
+                f"└ <b>By:</b> "
+                f"{M.sender.user_name or M.sender.user_full_name}"
+            ),
             reply_to_message_id=M.message_id,
+            parse_mode="HTML",
         )
-        
-        
-
-
-
-
-
-

@@ -26,53 +26,69 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        if not (context.get("text", "")).isdigit():
+        raw_id: str = context.get("text", "")
+    
+        if not raw_id.isdigit():
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="<blockquote>❌ <b>You must provide a valid anime ID.</b></blockquote>",
+                text=(
+                    "❌ <b>『Invalid ID』</b>\n"
+                    "└ <i>You must provide a valid anime ID.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
             return
-
-        anime_id: str = int(context.get("text", ""))
-
+    
+        anime_id: int = int(raw_id)
+    
         try:
             data = await self.client.utils.fetch(
                 f"https://weeb-api.vercel.app/anime?search={anime_id}"
             )
-
+    
             if not data:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="<blockquote>🤔 <b>No anime found for this ID.</b></blockquote>",
+                    text=(
+                        "🤔 <b>『Not Found』</b>\n"
+                        "└ <i>No anime found for this ID.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            anime = data[0]
-            title = anime["title"]
-
-            text = (
+    
+            anime: dict[str, Any] = data[0]
+            title: dict[str, str] = anime.get("title", {})
+    
+            trailer_id: str | None = anime.get("trailer", {}).get("id")
+            trailer_url: str = (
+                f"https://youtu.be/{trailer_id}" if trailer_id else "N/A"
+            )
+    
+            text: str = (
                 "<blockquote>"
-                f"🎬 <b>{title['english']} | {title['romaji']}</b>\n"
-                f"├ <b>Japanese:</b> {title['native']}\n"
-                f"├ <b>Type:</b> {anime['format']}\n"
-                f"├ <b>Adult:</b> {'Yes' if anime['isAdult'] else 'No'}\n"
-                f"├ <b>Status:</b> {anime['status']}\n"
-                f"├ <b>Episodes:</b> {anime['episodes']}\n"
-                f"├ <b>Duration:</b> {anime['duration']} min\n"
-                f"├ <b>First Aired:</b> {anime['startDate']}\n"
-                f"├ <b>Last Aired:</b> {anime['endDate']}\n"
-                f"├ <b>Genres:</b> {', '.join(anime['genres'])}\n"
-                f"├ <b>Studios:</b> {anime['studios']}\n"
-                f"└ <b>Trailer:</b> https://youtu.be/{anime.get('trailer', {}).get('id', 'N/A')}\n\n"
-                f"📖 <b>Description</b>\n{anime['description']}"
+                f"🎬 <b>『{title.get('english') or title.get('romaji') or 'Unknown'}』</b>\n"
+                f"├ <b>Romaji:</b> {title.get('romaji') or '—'}\n"
+                f"├ <b>Japanese:</b> {title.get('native') or '—'}\n"
+                f"├ <b>Type:</b> {anime.get('format') or '—'}\n"
+                f"├ <b>Adult:</b> {'Yes' if anime.get('isAdult') else 'No'}\n"
+                f"├ <b>Status:</b> {anime.get('status') or '—'}\n"
+                f"├ <b>Episodes:</b> {anime.get('episodes') or '—'}\n"
+                f"├ <b>Duration:</b> {anime.get('duration') or '—'} min\n"
+                f"├ <b>First Aired:</b> {anime.get('startDate') or '—'}\n"
+                f"├ <b>Last Aired:</b> {anime.get('endDate') or '—'}\n"
+                f"├ <b>Genres:</b> {', '.join(anime.get('genres', [])) or '—'}\n"
+                f"├ <b>Studios:</b> {anime.get('studios') or '—'}\n"
+                f"└ <b>Trailer:</b> {trailer_url}\n\n"
+                f"📖 <b>『Description』</b>\n"
+                f"{anime.get('description') or 'No description available.'}"
                 "</blockquote>"
             )
-
-            image = self.client.utils.fetch_buffer(anime["imageUrl"])
+    
+            image = await self.client.utils.fetch_buffer(anime["imageUrl"])
+    
             await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
@@ -80,14 +96,17 @@ class Command(BaseCommand):
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch anime data.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch anime data.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
-            
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")
+                
+    

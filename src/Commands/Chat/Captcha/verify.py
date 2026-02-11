@@ -4,13 +4,14 @@ from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING, Dict, Tuple
 from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
 
 
 class Command(BaseCommand):
-    _retry_guard: Dict[Tuple[int, int], bool] = {}
+    _retry_guard: Dict[Tuple[str, int, int], bool] = {}
 
     def __init__(self, client: SuperClient, handler: CommandHandler) -> None:
         super().__init__(
@@ -34,7 +35,7 @@ class Command(BaseCommand):
         if not user_id or not value:
             return
 
-        key: Tuple[int, int] = ("verify", M.chat_id, user_id)
+        key: Tuple[str, int, int] = ("captcha", M.chat_id, user_id)
 
         captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
         if not captcha_data:
@@ -50,6 +51,7 @@ class Command(BaseCommand):
 
         attempt: int = int(captcha_data["attempt"])
 
+        # ✅ Correct captcha
         if value == captcha_data["code"]:
             self.client.interaction_store.pop(key, None)
 
@@ -66,9 +68,15 @@ class Command(BaseCommand):
 
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=f"✅ Verified @{M.sender.user_name or M.sender.user_full_name}! You may chat now.",
+                text=(
+                    "✅ <b>『Verified』</b>\n"
+                    f"└ <i>@{M.sender.user_name or M.sender.user_full_name} may now chat.</i>"
+                ),
+                parse_mode="HTML",
             )
             return
+
+        # ❌ Failed completely
         if attempt >= 2:
             self.client.interaction_store.pop(key, None)
 
@@ -76,16 +84,21 @@ class Command(BaseCommand):
                 chat_id=M.chat_id,
                 user_id=user_id,
             )
-            await self.client.bot.delete_messages(chat_id=M.chat_id, message_id=M.message_id)
-            
-            await self.client.bot.edit_message_caption(
-                chat_id=M.chat_id,
-                message_id=M.message_id,
-                caption="❌ Captcha failed. The user has been kicked.",
-                reply_markup=None,
-            )
+
+            try:
+                await self.client.bot.edit_message_caption(
+                    chat_id=M.chat_id,
+                    message_id=M.message_id,
+                    caption="❌ <b>『Captcha Failed』</b>\n└ <i>User has been kicked.</i>",
+                    reply_markup=None,
+                    parse_mode="HTML",
+                )
+            except Exception:
+                pass
+
             return
 
+        # ❌ Incorrect but retry allowed
         captcha_data["attempt"] = attempt + 1
 
         retry_markup = InlineKeyboardMarkup(
@@ -102,8 +115,12 @@ class Command(BaseCommand):
         await self.client.bot.edit_message_caption(
             chat_id=M.chat_id,
             message_id=M.message_id,
-            caption="❌ Incorrect captcha.\n⏳ Retry within 3 minutes or you will be kicked.",
+            caption=(
+                "❌ <b>『Incorrect Captcha』</b>\n"
+                "└ <i>Retry within 3 minutes or you will be kicked.</i>"
+            ),
             reply_markup=retry_markup,
+            parse_mode="HTML",
         )
 
         self._retry_guard[key] = True
@@ -124,7 +141,8 @@ class Command(BaseCommand):
     ) -> None:
         await asyncio.sleep(180)
 
-        key: Tuple[int, int] = (chat_id, user_id)
+        key: Tuple[str, int, int] = ("captcha", chat_id, user_id)
+
         if key not in self._retry_guard:
             return
 
@@ -136,11 +154,16 @@ class Command(BaseCommand):
                 chat_id=chat_id,
                 user_id=user_id,
             )
+
             await self.client.bot.edit_message_caption(
                 chat_id=chat_id,
                 message_id=message_id,
-                caption="⏰ Retry expired. The user has been kicked.",
+                caption=(
+                    "⏰ <b>『Retry Expired』</b>\n"
+                    "└ <i>User has been kicked.</i>"
+                ),
                 reply_markup=None,
+                parse_mode="HTML",
             )
         except Exception:
             pass

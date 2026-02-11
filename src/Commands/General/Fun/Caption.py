@@ -6,6 +6,7 @@ from urllib.parse import quote_plus
 
 from Libs import BaseCommand
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
@@ -33,7 +34,10 @@ class Command(BaseCommand):
         if not text:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ Provide caption text.\nExample: <code>/caption text:Hello World</code>",
+                text=(
+                    "❗ <b>『Missing Text』</b>\n"
+                    "└ <i>Example: <code>/caption text:Hello World</code></i>"
+                ),
                 parse_mode="HTML",
                 reply_to_message_id=M.message_id,
             )
@@ -41,7 +45,20 @@ class Command(BaseCommand):
 
         bottom: bool = flags.get("bottom", "false").lower() == "true"
         dark: bool = flags.get("dark", "true").lower() == "true"
-        fontsize: int = int(flags.get("fontsize", 30))
+
+        try:
+            fontsize: int = int(flags.get("fontsize", 30))
+        except (TypeError, ValueError):
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    "❌ <b>『Invalid Font Size』</b>\n"
+                    "└ <i>Use fontsize:&lt;number&gt;</i>"
+                ),
+                parse_mode="HTML",
+                reply_to_message_id=M.message_id,
+            )
+            return
 
         image_url: str
 

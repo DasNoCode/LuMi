@@ -3,6 +3,7 @@ import traceback
 from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 
+
 if TYPE_CHECKING:
     from telegram import User
     from Libs import SuperClient, Message
@@ -39,50 +40,92 @@ class Command(BaseCommand):
             if not users:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="❗ Please mention at least one user or reply to their message to ban them.",
+                    text=(
+                        "❗ <b>『Invalid Usage』</b>\n"
+                        "└ <i>Mention at least one user or reply to a message.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
                 return
 
-            text: str = context.get("text", None)
-            reason = " ".join(word for word in text.split() if not word.startswith("@"))
+            raw_text: str = context.get("text", "").strip()
+            reason: str = " ".join(
+                word for word in raw_text.split()
+                if not word.startswith("@")
+            )
 
             for user in users:
-                member = await self.client.bot.get_chat_member(M.chat_id, user.user_id)
+                member = await self.client.bot.get_chat_member(
+                    M.chat_id,
+                    user.user_id,
+                )
+
                 if member.status == "creator":
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text=f"❌ Cannot ban group owner: {user.user_full_name or user.user_name}",
+                        text=(
+                            "❌ <b>『Action Denied』</b>\n"
+                            f"└ <i>Cannot ban group owner: "
+                            f"{user.user_full_name or user.user_name}</i>"
+                        ),
                         reply_to_message_id=M.message_id,
+                        parse_mode="HTML",
                     )
                     continue
 
                 if user.user_id == M.bot_userid:
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text="❌ I can't ban myself.",
+                        text=(
+                            "❌ <b>『Action Denied』</b>\n"
+                            "└ <i>I cannot ban myself.</i>"
+                        ),
                         reply_to_message_id=M.message_id,
+                        parse_mode="HTML",
                     )
                     continue
-                
-                self.client.db.manage_banned_user(chat_id=M.chat_id, user_id=user.user_id, by_user_id=M.sender.user_id, ban=True, reason=reason)
-                await self.client.bot.send_message(
+
+                self.client.db.manage_banned_user(
                     chat_id=M.chat_id,
-                    text=f"✅ User with ID {user.user_id} has been banned."
-                    + (f"\nReason: {reason}" if reason else ""),
+                    user_id=user.user_id,
+                    by_user_id=M.sender.user_id,
+                    ban=True,
+                    reason=reason,
                 )
+
                 await self.client.bot.ban_chat_member(
                     chat_id=M.chat_id,
                     user_id=user.user_id,
                 )
 
+                await self.client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=(
+                        "✅ <b>『User Banned』</b>\n"
+                        f"├ <b>User:</b> "
+                        f"{user.user_full_name or user.user_name}\n"
+                        f"├ <b>ID:</b> <code>{user.user_id}</code>\n"
+                        + (
+                            f"└ <b>Reason:</b> {reason}"
+                            if reason
+                            else "└ <i>No reason provided.</i>"
+                        )
+                    ),
+                    parse_mode="HTML",
+                )
+
         except Exception as e:
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
-            
-            await self.client.bot.send_message(
-                chat_id=M.chat_id,
-                text="❌ Something went wrong. Please try again later.",
-                reply_to_message_id=M.message_id,
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
             )
 
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Something went wrong. Please try again later.</i>"
+                ),
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
+            )

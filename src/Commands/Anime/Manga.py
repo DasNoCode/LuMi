@@ -26,68 +26,75 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        query = context.get("text", "")
+        query: str = context.get("text", "").strip()
+    
         if not query:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="<blockquote>❌ <b>You forgot to provide a manga name.</b></blockquote>",
+                text=(
+                    "❌ <b>『Missing Query』</b>\n"
+                    "└ <i>You forgot to provide a manga name.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
             return
-
+    
         try:
-            mangas = await self.client.utils.fetch(
+            mangas: list[dict[str, Any]] = await self.client.utils.fetch(
                 f"https://weeb-api.vercel.app/manga?search={query}"
             )
-
+    
             if not mangas:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
-                        "<blockquote>"
-                        "🤔 <b>No results found.</b>\n"
-                        "├ Try a different name"
-                        "</blockquote>"
+                        "🤔 <b>『No Results』</b>\n"
+                        f"└ <i>No results found for \"{query}\".</i>"
                     ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            text = (
+    
+            text: str = (
                 "<blockquote>"
-                f"📚 <b>Manga Search Results</b>\n"
+                "📚 <b>『Manga Search Results』</b>\n"
                 f"├ <b>Query:</b> {query}\n"
-                "</blockquote>\n"
+                f"└ <b>Total Found:</b> {len(mangas)}\n\n"
             )
-
-            for i, manga in enumerate(mangas):
-                symbol = "🔞" if manga.get("isAdult") else "🌀"
+    
+            for i, manga in enumerate(mangas, start=1):
+                title: dict[str, str] = manga.get("title", {})
+                is_adult: bool = bool(manga.get("isAdult"))
+                symbol: str = "🔞" if is_adult else "🌀"
+    
                 text += (
-                    "<blockquote>"
-                    f"#{i + 1}\n"
-                    f"├ <b>English:</b> {manga['title']['english']}\n"
-                    f"├ <b>Romaji:</b> {manga['title']['romaji']}\n"
-                    f"├ <b>Status:</b> {manga['status']}\n"
-                    f"├ <b>Adult:</b> {manga['isAdult']} {symbol}\n"
-                    f"└ <b>More:</b> {self.client.config.prefix}mid {manga['id']}"
-                    "</blockquote>\n"
+                    f"#{i}\n"
+                    f"├ <b>English:</b> {title.get('english') or '—'}\n"
+                    f"├ <b>Romaji:</b> {title.get('romaji') or '—'}\n"
+                    f"├ <b>Status:</b> {manga.get('status') or '—'}\n"
+                    f"├ <b>Adult:</b> {'Yes' if is_adult else 'No'} {symbol}\n"
+                    f"└ <b>More Info:</b> <code>{self.client.prefix}mid {manga.get('id')}</code>\n\n"
                 )
-
+    
+            text += "</blockquote>"
+    
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text.strip(),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch manga information.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch manga information.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")

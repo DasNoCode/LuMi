@@ -265,6 +265,9 @@ class Utils:
     ) -> bytes:
         title_text: Final[str] = "Who's That Pokémon?" if hidden else name
     
+        # Ensure title_text is just a "?" for the hidden state
+        display_title = "?" if hidden else name 
+    
         html: Final[str] = f"""
         <!DOCTYPE html>
         <html>
@@ -290,6 +293,13 @@ class Utils:
               align-items: center;
               gap: 64px;
             }}
+            .pokemon-img {{
+              width: 440px;
+              height: 440px;
+              object-fit: contain;
+              /* The logic below ensures the image remains identical in size and position */
+              filter: {"brightness(0)" if hidden else "none"};
+            }}
             .title {{
               font-family: Pokemon;
               font-size: 90px;
@@ -297,6 +307,7 @@ class Utils:
               -webkit-text-stroke: 6px #1f4bd8;
               letter-spacing: 5px;
               text-align: center;
+              text-transform: uppercase;
             }}
           </style>
         </head>
@@ -304,16 +315,13 @@ class Utils:
           <div class="wrap">
             <img
               src="{image_url}"
-              width="440"
-              height="440"
-              style="object-fit:contain;{'filter:brightness(0);' if hidden else ''}"
+              class="pokemon-img"
             />
             <div class="title">{title_text}</div>
           </div>
         </body>
         </html>
         """
-    
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             page = await browser.new_page(viewport={"width": 1280, "height": 720})

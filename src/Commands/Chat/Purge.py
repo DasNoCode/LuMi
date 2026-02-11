@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
 from telegram.error import BadRequest
+
 
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
@@ -56,8 +56,13 @@ class Command(BaseCommand):
         try:
             confirm = await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=f"✅ Cleared {len(message_ids)} messages.",
+                text=(
+                    "🧹 <b>『Chat Purged』</b>\n"
+                    f"└ <b>Messages Cleared:</b> {len(message_ids)}"
+                ),
+                parse_mode="HTML",
             )
+
             await self.client.bot.delete_message(
                 chat_id=M.chat_id,
                 message_id=confirm.message_id,

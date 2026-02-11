@@ -26,31 +26,38 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: list[Any]) -> None:
         try:
-            res = await self.client.utils.fetch("https://nekos.best/api/v2/kitsune")
-            results = res.get("results", [])
-
+            res: dict[str, Any] = await self.client.utils.fetch(
+                "https://nekos.best/api/v2/kitsune"
+            )
+    
+            results: list[dict[str, Any]] = res.get("results", [])
+    
             if not results:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="<blockquote>❌ <b>No kitsune found right now.</b></blockquote>",
+                    text=(
+                        "❌ <b>『Unavailable』</b>\n"
+                        "└ <i>No kitsune found right now.</i>"
+                    ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            kitsune = results[0]
-            image = self.client.utils.fetch_buffer(kitsune["url"])
-
-            text = (
+    
+            kitsune: dict[str, Any] = results[0]
+    
+            image = await self.client.utils.fetch_buffer(kitsune.get("url"))
+    
+            text: str = (
                 "<blockquote>"
-                "🦊 <b>Kitsune</b>\n"
-                f"├ <b>Artist:</b> {kitsune.get('artist_name', 'Unknown')}\n"
-                f"├ <b>Source:</b> {kitsune.get('source_url', 'N/A')}\n"
-                f"├ <b>Artist Profile:</b> {kitsune.get('artist_href', 'N/A')}\n"
-                f"└ <b>Image:</b> {kitsune.get('url')}"
+                "🦊 <b>『Kitsune』</b>\n"
+                f"├ <b>Artist:</b> {kitsune.get('artist_name') or 'Unknown'}\n"
+                f"├ <b>Source:</b> {kitsune.get('source_url') or 'N/A'}\n"
+                f"├ <b>Artist Profile:</b> {kitsune.get('artist_href') or 'N/A'}\n"
+                f"└ <b>Image URL:</b> {kitsune.get('url') or 'N/A'}"
                 "</blockquote>"
             )
-
+    
             await self.client.bot.send_photo(
                 chat_id=M.chat_id,
                 photo=image,
@@ -58,13 +65,15 @@ class Command(BaseCommand):
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch kitsune image.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch kitsune image.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")

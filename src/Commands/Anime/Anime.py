@@ -26,68 +26,75 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: list[Any]) -> None:
-        query = context.get("text", "")
-
+        query: str = context.get("text", "").strip()
+    
         if not query:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="<blockquote>❌ <b>Please provide an anime name.</b></blockquote>",
+                text=(
+                    "❌ <b>『Missing Query』</b>\n"
+                    "└ <i>Please provide an anime name.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
             return
-
+    
         try:
-            animes = self.client.utils.fetch(
+            animes: list[dict[str, Any]] = await self.client.utils.fetch(
                 f"https://weeb-api.vercel.app/anime?search={query}"
             )
-
+    
             if not animes:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=(
-                        "<blockquote>"
-                        "🤔 <b>No results found.</b>\n"
-                        "Try searching with a different name."
-                        "</blockquote>"
+                        "🤔 <b>『No Results』</b>\n"
+                        f"└ <i>No results found for \"{query}\".</i>"
                     ),
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
                 return
-
-            text = (
+    
+            text: str = (
                 "<blockquote>"
-                f"🎬 <b>Anime Search Results</b>\n"
-                f"├ <b>Query:</b> {query}\n\n"
+                "🎬 <b>『Anime Search Results』</b>\n"
+                f"├ <b>Query:</b> {query}\n"
+                f"└ <b>Total Found:</b> {len(animes)}\n\n"
             )
-
+    
             for i, anime in enumerate(animes, start=1):
+                title: dict[str, str] = anime.get("title", {})
+    
                 text += (
                     f"#{i}\n"
-                    f"├ <b>English:</b> {anime['title']['english']}\n"
-                    f"├ <b>Romaji:</b> {anime['title']['romaji']}\n"
-                    f"├ <b>Type:</b> {anime['format']}\n"
-                    f"├ <b>Status:</b> {anime['status']}\n"
-                    f"└ <b>More Info:</b> {self.client.prefix}aid {anime['id']}\n\n"
+                    f"├ <b>English:</b> {title.get('english') or '—'}\n"
+                    f"├ <b>Romaji:</b> {title.get('romaji') or '—'}\n"
+                    f"├ <b>Type:</b> {anime.get('format') or '—'}\n"
+                    f"├ <b>Status:</b> {anime.get('status') or '—'}\n"
+                    f"└ <b>More Info:</b> <code>{self.client.prefix}aid {anime.get('id')}</code>\n\n"
                 )
-
+    
             text += "</blockquote>"
-
+    
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text.strip(),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
+    
         except Exception as e:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⚠️ <b>Failed to fetch anime data.</b>",
+                text=(
+                    "⚠️ <b>『Error』</b>\n"
+                    "└ <i>Failed to fetch anime data.</i>"
+                ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
-            
+            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")
+                
+    

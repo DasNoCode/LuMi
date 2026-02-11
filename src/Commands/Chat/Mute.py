@@ -7,6 +7,7 @@ from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 from telegram import ChatPermissions
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
@@ -31,7 +32,7 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        users = []
+        users: list[Any] = []
 
         if M.reply_to_user:
             users.append(M.reply_to_user)
@@ -41,25 +42,33 @@ class Command(BaseCommand):
         if not users:
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❗ Reply to a user or mention at least one user to mute.",
+                text=(
+                    "❗ <b>『Invalid Usage』</b>\n"
+                    "└ <i>Reply to a user or mention at least one user.</i>"
+                ),
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
-
-        flags = context.get("flags", {})
+        
+        flags: dict[str, Any] = context.get("flags", {})
         time_value = flags.get("time")
 
         if time_value is not None:
             try:
-                minutes = int(time_value)
+                minutes: int = int(time_value)
                 until_date = timedelta(minutes=minutes)
-                label = f"{minutes} minutes"
-                explicit = True
+                label: str = f"{minutes} minutes"
+                explicit: bool = True
             except (TypeError, ValueError):
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text="❌ Invalid time value. Use time:<minutes>",
+                    text=(
+                        "❌ <b>『Invalid Time』</b>\n"
+                        "└ <i>Use time:&lt;minutes&gt;</i>"
+                    ),
                     reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
                 )
                 return
         else:
@@ -73,15 +82,20 @@ class Command(BaseCommand):
                 chat_id=M.chat_id,
                 user_id=user.user_id,
             )
-
-            already_muted = (
-                member.can_send_messages is False
-            )
+            if member.ADMINISTRATOR:
+                return
+            
+            already_muted: bool = member.can_send_messages is False
 
             if already_muted and not explicit:
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text=f"⚠️ {user.user_full_name or user.user_name} is already muted.",
+                    text=(
+                        "⚠️ <b>『Already Muted』</b>\n"
+                        f"└ <i>{user.user_full_name or user.user_name} "
+                        "is already muted.</i>"
+                    ),
+                    parse_mode="HTML",
                 )
                 continue
 
@@ -94,5 +108,11 @@ class Command(BaseCommand):
 
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=f"🔇 {user.user_full_name or user.user_name} muted for {label}.",
+                text=(
+                    "🔇 <b>『User Muted』</b>\n"
+                    f"├ <b>User:</b> "
+                    f"{user.user_full_name or user.user_name}\n"
+                    f"└ <b>Duration:</b> {label}"
+                ),
+                parse_mode="HTML",
             )
