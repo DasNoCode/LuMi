@@ -26,8 +26,6 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        user_mention: str = M.sender.user_name or M.sender.user_full_name
-
         if M.is_callback:
             try:
                 await self.client.bot.edit_message_caption(
@@ -35,7 +33,7 @@ class Command(BaseCommand):
                     message_id=M.message_id,
                     caption=(
                         "✨ <b>『Welcome』</b>\n"
-                        f"├ <b>User:</b> {user_mention}\n"
+                        f"├ <b>User:</b> {M.sender.mention}\n"
                         "├ <b>Name:</b> LuMi\n"
                         "└ <i>Your all-in-one group management bot "
                         "with fun games and anime commands!</i>"
@@ -75,7 +73,7 @@ class Command(BaseCommand):
             photo="src/Assets/bot_image.jpg",
             caption=(
                 "👋 <b>『Hello』</b>\n"
-                f"├ <b>User:</b> {user_mention}\n"
+                f"├ <b>User:</b> {M.sender.mention}\n"
                 "└ <i>Tap below to explore Lumi ✨</i>"
             ),
             parse_mode="HTML",

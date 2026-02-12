@@ -59,16 +59,12 @@ class Command(BaseCommand):
                 M.sender.user_id,
                 avatar_url,
             )
-            name: str = (
-                f"@{M.sender.user_name}"
-                if M.sender.user_name
-                else f'<a href="tg://user?id={M.sender.user_id}">{M.sender.user_full_name}</a>'
-            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text = (
                     "👤 <b>『Profile Update』</b>\n"
-                    f"├ <b>User:</b> {name}\n"
+                    f"├ <b>User:</b> {M.sender.mention}\n"
                     "└ <b>Profile photo updated successfully</b> ✅"
                 ),
                 parse_mode="HTML",

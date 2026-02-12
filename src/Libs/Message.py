@@ -73,6 +73,7 @@ class Message:
         self.message_id: Optional[int] = getattr(self._m, "message_id", None)
 
         if self.is_callback:
+            self.callback_id: int = data.id
             self.message: str = data.data or ""
         else:
             self.message = (
@@ -111,6 +112,7 @@ class Message:
             self.event_user = JsonObject(
                 {
                     "user_id": user.id,
+                    "mention": self.mention(user),
                     "user_name": user.username,
                     "user_full_name": user.full_name,
                 }
@@ -119,6 +121,7 @@ class Message:
                 self.action_by = JsonObject(
                     {
                         "user_id": m.from_user.id,
+                        "mention": self.mention(m.from_user),
                         "user_name": m.from_user.username,
                         "user_full_name": m.from_user.full_name,
                     }
@@ -132,6 +135,7 @@ class Message:
             self.event_user = JsonObject(
                 {
                     "user_id": user.id,
+                    "mention": self.mention(user),
                     "user_name": user.username,
                     "user_full_name": user.full_name,
                 }
@@ -140,6 +144,7 @@ class Message:
                 self.action_by = JsonObject(
                     {
                         "user_id": m.from_user.id,
+                        "mention": self.mention(m.from_user),
                         "user_name": m.from_user.username,
                         "user_full_name": m.from_user.full_name,
                     }
@@ -189,6 +194,7 @@ class Message:
                     JsonObject(
                         {
                             "user_id": user.id,
+                            "mention": self.mention(user),
                             "user_name": user.username,
                             "user_full_name": full_name,
                             "user_role": role,
@@ -221,7 +227,17 @@ class Message:
                     self.msg_type = mtype
                     self.file_id = file_id
                     return
-
+                
+    def mention(self, u: Any) -> str:
+        username = getattr(u, "username", None) or getattr(u, "user_name", None)
+        user_id = getattr(u, "id", None) or getattr(u, "user_id", None)
+        full_name = getattr(u, "full_name", None) or getattr(u, "user_full_name", "")
+    
+        if username:
+            return f"@{username}"
+    
+        return f'<a href="tg://user?id={user_id}">{full_name}</a>'
+    
     async def build(self) -> Message:
         if self.is_event:
             return self
@@ -238,6 +254,7 @@ class Message:
             self.sender = JsonObject(
                 {
                     "user_id": self.sender_raw.id,
+                    "mention": self.mention(self.sender_raw),
                     "user_name": self.sender_raw.username,
                     "user_full_name": self.sender_raw.full_name,
                     "user_role": role,
@@ -252,6 +269,7 @@ class Message:
                 self.reply_to_user = JsonObject(
                     {
                         "user_id": reply_user.id,
+                        "mention": self.mention(reply_user),
                         "user_name": reply_user.username,
                         "user_full_name": reply_user.full_name,
                         "user_role": role,
@@ -264,5 +282,3 @@ class Message:
             self.mentioned.append(self.reply_to_user)
 
         return self
-
-

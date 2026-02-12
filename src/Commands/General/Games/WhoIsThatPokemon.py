@@ -79,7 +79,7 @@ class Command(BaseCommand):
         text = (
             f"🎉 <b>『Correct』</b>\n"
             f"├ Pokémon: <b>{game['pokemon_name'].title()}</b>\n"
-            f"└ Guessed by: <b>{M.sender.user_full_name}</b>"
+            f"└ Guessed by: <b>{M.sender.mention}</b>"
         )
         print(game["url"])
         photo = await self.client.utils.generate_guess_pokemon(game["url"], answer, False)
