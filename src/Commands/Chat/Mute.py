@@ -36,8 +36,8 @@ class Command(BaseCommand):
 
         if M.reply_to_user:
             users.append(M.reply_to_user)
-        elif M.mentioned:
-            users.extend(M.mentioned)
+        elif M.mentions:
+            users.extend(M.mentions)
 
         if not users:
             await self.client.bot.send_message(

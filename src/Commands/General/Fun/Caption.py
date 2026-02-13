@@ -70,7 +70,7 @@ class Command(BaseCommand):
         else:
             user = (
                 M.reply_to_user
-                or (M.mentioned[0] if M.mentioned else None)
+                or (M.mentions[0] if M.mentions else None)
                 or M.sender
             )
             image_url = await self.client.profile_photo_url(user.user_id)

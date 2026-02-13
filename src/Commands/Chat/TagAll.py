@@ -28,7 +28,7 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        members = self.client.bot.get_chat_members(M.chat_id)
+        members = self.client.pyrogram_Client.get_chat_members(M.chat_id)
 
         user_ids: list[int] = [
             m.user.id

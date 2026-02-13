@@ -6,6 +6,7 @@ from typing import Any, TYPE_CHECKING, Tuple
 
 from Libs import BaseCommand
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
@@ -27,25 +28,36 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        text: str = context.get("text", None)
-        if not text:
+        raw_text: str | None = context.get("text")
+
+        if not raw_text:
+            text: str = (
+                "『<i>Invalid Input</i>』❌\n"
+                "└ <i>Action</i>: Provide a Pokémon name"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text = (
-                    "❌ <b>『Invalid Input』</b>\n"
-                    "└ <i>Please provide a Pokémon name.</i>"
-                ),
+                text=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
-        key: Tuple[int, int] = ("whos_that_pokemon", M.chat_id)
+        key: Tuple[str, int] = ("whos_that_pokemon", M.chat_id)
         game = self.client.interaction_store.get(key)
+
         if not game:
+            text = (
+                "『<i>No Active Game</i>』❌\n"
+                "└ <i>Status</i>: No Pokémon quiz running"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ No active Pokémon quiz right now.",
+                text=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
@@ -53,42 +65,58 @@ class Command(BaseCommand):
 
         if now > game["expires_at"]:
             self.client.interaction_store.pop(key, None)
+
+            text = (
+                "『<i>Time Over</i>』⏰\n"
+                "└ <i>Status</i>: The round has expired"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="⏰ Oops! You missed it. Time is over.",
+                text=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
-        guess: str = (text).lower()
+        guess: str = raw_text.lower().strip()
         answer: str = game["pokemon_name"].lower()
-        print(guess,answer, guess == answer)
+
         if guess != answer:
+            text = (
+                "『<i>Wrong Guess</i>』❌\n"
+                "└ <i>Action</i>: Try again before time runs out"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text= (
-                    "❌ <b>『Wrong Guess』</b>\n"
-                    "└ <i>Try again before time runs out.</i>"
-                ),
+                text=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
         self.client.interaction_store.pop(key, None)
 
-        text = (
-            f"🎉 <b>『Correct』</b>\n"
-            f"├ Pokémon: <b>{game['pokemon_name'].title()}</b>\n"
-            f"└ Guessed by: <b>{M.sender.mention}</b>"
+        caption: str = (
+            "『<i>Correct</i>』🎉\n"
+            f"├ <i>Pokémon</i>: {game['pokemon_name'].title()}\n"
+            f"└ <i>Guessed By</i>: {M.sender.mention}"
         )
-        print(game["url"])
-        photo = await self.client.utils.generate_guess_pokemon(game["url"], answer, False)
-        img = BytesIO(photo)
+
+        photo_bytes = await self.client.utils.generate_guess_pokemon(
+            game["url"],
+            answer,
+            False,
+        )
+
+        img = BytesIO(photo_bytes)
         img.seek(0)
+
         await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo=img,
-            caption=text,
+            caption=caption,
             parse_mode="HTML",
             reply_to_message_id=M.message_id,
         )

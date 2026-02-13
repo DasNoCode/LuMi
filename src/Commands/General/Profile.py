@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
 from typing import Any, TYPE_CHECKING
-
 from Libs import BaseCommand
 
-
 if TYPE_CHECKING:
+    from telegram import User
     from Libs import SuperClient, Message
     from Handler import CommandHandler
 
@@ -32,44 +30,43 @@ class Command(BaseCommand):
             text="⌨",
             reply_to_message_id=M.message_id,
         )
-
-        user = (
-            M.reply_to_user
-            or (M.mentioned[0] if M.mentioned else None)
-            or M.sender
-        )
-
-        db_user = self.client.db.get_user_by_user_id(user.user_id)
-        xp: int = db_user.xp if db_user else 0
-
-        chat = await self.client.bot.get_chat(chat_id=user.user_id)
-        user_bio: str = chat.bio or "N/A"
-
-        avatar_url: str | None = await self.client.profile_photo_url(
-            user_id=user.user_id
-        )
-
-        text: str = (
-            "<blockquote>"
-            + (f'<a href="{avatar_url}">&#8204;</a>' if avatar_url else "")
-            + "👤 <b>『User Profile』</b>\n"
-            f"├ <b>Name:</b> {user.user_full_name}\n"
-            f"├ <b>User ID:</b> <code>{user.user_id}</code>\n"
-            f"├ <b>Username:</b> @{user.user_name or 'N/A'}\n"
-            f"├ <b>XP:</b> {xp}\n"
-            f"├ <b>Role:</b> {user.user_role}\n"
-            f"└ <b>Bio:</b> {user_bio}"
-            "</blockquote>"
-        )
-
-        await self.client.bot.delete_message(
-            chat_id=M.chat_id,
-            message_id=loading.message_id,
-        )
-
-        await self.client.bot.send_message(
-            chat_id=M.chat_id,
-            text=text,
-            parse_mode="HTML",
-            reply_to_message_id=M.message_id,
-        )
+        users: list[User] = []
+        if M.reply_to_user:
+            users.append(M.reply_to_user)
+        elif M.mentions:
+            users.extend(M.mentions)
+        else:
+            users.append(M.sender)
+        
+        for user in users:
+            db_user = self.client.db.get_user_by_user_id(user.user_id)
+            xp: int = db_user.xp if db_user else 0
+    
+            chat = await self.client.bot.get_chat(chat_id=user.user_id)
+            user_bio: str = chat.bio or "N/A"
+    
+            avatar_url: str | None = await self.client.profile_photo_url(
+                user_id=user.user_id
+            )
+    
+            text: str = (
+                (f'<a href="{avatar_url}">&#8204;</a>' if avatar_url else "")
+                + "『<i>User Information</i>』ℹ️\n"
+                f"├ <i>Name</i>: {user.user_full_name}\n"
+                f"├ <i>User ID</i>: <code>{user.user_id}</code>\n"
+                f"├ <i>Username</i>: {user.mention}\n"
+                f"├ <i>XP</i>: {xp}\n"
+                f"└ <i>Bio</i>: {user_bio}"
+            )
+    
+            await self.client.bot.delete_message(
+                chat_id=M.chat_id,
+                message_id=loading.message_id,
+            )
+    
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_to_message_id=M.message_id,
+            )

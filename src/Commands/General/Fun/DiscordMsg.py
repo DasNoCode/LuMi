@@ -39,7 +39,7 @@ class Command(BaseCommand):
             content = " ".join(text).strip()
             user = (
                 M.reply_to_user
-                or (M.mentioned[0] if M.mentioned else None)
+                or (M.mentions[0] if M.mentions else None)
                 or M.sender
             )
 

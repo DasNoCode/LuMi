@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import asyncio
-from Libs import BaseCommand
 from typing import Any, TYPE_CHECKING, Dict, Tuple
 from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup
+from Libs import BaseCommand
 
 
 if TYPE_CHECKING:
@@ -37,7 +38,9 @@ class Command(BaseCommand):
 
         key: Tuple[str, int, int] = ("captcha", M.chat_id, user_id)
 
-        captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
+        captcha_data: Dict[str, Any] | None = (
+            self.client.interaction_store.get(key)
+        )
         if not captcha_data:
             return
 
@@ -51,7 +54,6 @@ class Command(BaseCommand):
 
         attempt: int = int(captcha_data["attempt"])
 
-        # ✅ Correct captcha
         if value == captcha_data["code"]:
             self.client.interaction_store.pop(key, None)
 
@@ -66,17 +68,18 @@ class Command(BaseCommand):
                 message_id=M.message_id,
             )
 
+            text: str = (
+                "『<i>Verified</i>』✅\n"
+                f"└ <i>User</i>: {M.sender.mention}"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "✅ <b>『Verified』</b>\n"
-                    f"└ <i>@{M.sender.user_name or M.sender.user_full_name} may now chat.</i>"
-                ),
+                text=text,
                 parse_mode="HTML",
             )
             return
 
-        # ❌ Failed completely
         if attempt >= 2:
             self.client.interaction_store.pop(key, None)
 
@@ -86,10 +89,15 @@ class Command(BaseCommand):
             )
 
             try:
+                text: str = (
+                    "『<i>Captcha Failed</i>』❌\n"
+                    "└ <i>Status</i>: User kicked"
+                )
+
                 await self.client.bot.edit_message_caption(
                     chat_id=M.chat_id,
                     message_id=M.message_id,
-                    caption="❌ <b>『Captcha Failed』</b>\n└ <i>User has been kicked.</i>",
+                    caption=text,
                     reply_markup=None,
                     parse_mode="HTML",
                 )
@@ -98,27 +106,28 @@ class Command(BaseCommand):
 
             return
 
-        # ❌ Incorrect but retry allowed
         captcha_data["attempt"] = attempt + 1
 
         retry_markup = InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        text="🔁 Retry captcha",
+                        text="『Retry captcha』",
                         callback_data=f"cmd:captcha user_id:{user_id}",
                     )
                 ]
             ]
         )
 
+        text: str = (
+            "『<i>Incorrect Captcha</i>』❌\n"
+            "└ <i>Action</i>: Retry within 3 minutes"
+        )
+
         await self.client.bot.edit_message_caption(
             chat_id=M.chat_id,
             message_id=M.message_id,
-            caption=(
-                "❌ <b>『Incorrect Captcha』</b>\n"
-                "└ <i>Retry within 3 minutes or you will be kicked.</i>"
-            ),
+            caption=text,
             reply_markup=retry_markup,
             parse_mode="HTML",
         )
@@ -155,13 +164,15 @@ class Command(BaseCommand):
                 user_id=user_id,
             )
 
+            text: str = (
+                "『<i>Retry Expired</i>』⏰\n"
+                "└ <i>Status</i>: User kicked"
+            )
+
             await self.client.bot.edit_message_caption(
                 chat_id=chat_id,
                 message_id=message_id,
-                caption=(
-                    "⏰ <b>『Retry Expired』</b>\n"
-                    "└ <i>User has been kicked.</i>"
-                ),
+                caption=text,
                 reply_markup=None,
                 parse_mode="HTML",
             )

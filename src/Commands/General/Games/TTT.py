@@ -37,7 +37,7 @@ class Command(BaseCommand):
             await self._handle_callback(M)
             return
 
-        target = M.reply_to_user or (M.mentioned[0] if M.mentioned else None)
+        target = M.reply_to_user or (M.mentions[0] if M.mentions else None)
         if not target:
             return
 

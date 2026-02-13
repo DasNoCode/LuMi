@@ -31,3 +31,4 @@ def get_config() -> JsonObject:
 
     return JsonObject(config_data)
 
+

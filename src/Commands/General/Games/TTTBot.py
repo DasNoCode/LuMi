@@ -21,7 +21,7 @@ class Command(BaseCommand):
             client,
             handler,
             {
-                "command": "tttbot",
+                "command": "assad",
                 "category": "games",
                 "description": {
                     "content": "Play Tic Tac Toe against the bot.",

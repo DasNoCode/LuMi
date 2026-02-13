@@ -6,6 +6,7 @@ from typing import Any, TYPE_CHECKING
 
 from Libs import BaseCommand
 
+
 if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
@@ -38,13 +39,16 @@ class Command(BaseCommand):
             photo_file_id = M.file_id
 
         if not photo_file_id:
+            text: str = (
+                "『<i>Invalid Action</i>』❌\n"
+                "└ <i>Usage</i>: Reply to a photo or send one with caption"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text = (
-                    "❌ <b>『Invalid Action』</b>\n"
-                    "└ <i>Reply to a photo or send a photo with caption to set profile picture.</i>"
-                ),
+                text=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 
@@ -53,20 +57,21 @@ class Command(BaseCommand):
 
         try:
             avatar_url: str = self.client.utils.img_to_url(str(path))
-            print(avatar_url)
 
             self.client.db.set_user_profile_photo(
                 M.sender.user_id,
                 avatar_url,
             )
 
+            text: str = (
+                "『<i>Profile Updated</i>』👤\n"
+                f"├ <i>User</i>: {M.sender.mention}\n"
+                "└ <i>Status</i>: Profile photo updated successfully ✅"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text = (
-                    "👤 <b>『Profile Update』</b>\n"
-                    f"├ <b>User:</b> {M.sender.mention}\n"
-                    "└ <b>Profile photo updated successfully</b> ✅"
-                ),
+                text=text,
                 parse_mode="HTML",
                 reply_to_message_id=M.message_id,
             )

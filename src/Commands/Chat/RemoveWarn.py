@@ -35,8 +35,8 @@ class Command(BaseCommand):
         users: list[User] = []
         if M.reply_to_user:
             users.append(M.reply_to_user)
-        elif M.mentioned:
-            users.extend(M.mentioned)
+        elif M.mentions:
+            users.extend(M.mentions)
 
         if not users:
             await self.client.bot.send_message(
@@ -87,8 +87,8 @@ class Command(BaseCommand):
                     text=(
                         "<blockquote>"
                         "⚖️ <b>『Warnings Cleared』</b>\n"
-                        f"├ <b>User:</b> {user.user_full_name}\n"
-                        f"├ <b>By:</b> @{M.sender.user_name}\n"
+                        f"├ <b>User:</b> {user.mention}\n"
+                        f"├ <b>By:</b> {M.sender.mention}\n"
                         "└ <b>Status:</b> All warnings removed ✅"
                         "</blockquote>"
                     ),
@@ -115,8 +115,8 @@ class Command(BaseCommand):
                 text=(
                     "<blockquote>"
                     "⚖️ <b>『Warning Updated』</b>\n"
-                    f"├ <b>User:</b> {user.user_full_name}\n"
-                    f"├ <b>By:</b> @{M.sender.user_name}\n"
+                    f"├ <b>User:</b> {user.mention}\n"
+                    f"├ <b>By:</b> {M.sender.mention}\n"
                     f"└ <b>Warnings:</b> {entry.get('count', 0)}/3"
                     "</blockquote>"
                 ),

@@ -28,36 +28,37 @@ class Command(BaseCommand):
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         if M.is_callback:
             try:
+                text: str = (
+                    "『<i>Introduction</i>』👤\n"
+                    f"├ <i>Name</i>: LuMi\n"
+                    f"├ <i>User</i>: {M.sender.mention}\n"
+                    "└ <i>Description</i>: A group management bot with games and anime commands"
+                )
+
                 await self.client.bot.edit_message_caption(
                     chat_id=M.chat_id,
                     message_id=M.message_id,
-                    caption=(
-                        "✨ <b>『Welcome』</b>\n"
-                        f"├ <b>User:</b> {M.sender.mention}\n"
-                        "├ <b>Name:</b> LuMi\n"
-                        "└ <i>Your all-in-one group management bot "
-                        "with fun games and anime commands!</i>"
-                    ),
+                    caption=text,
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup(
                         [
                             [
                                 InlineKeyboardButton(
-                                    "🧑‍💻 Owner",
+                                    "『Owner』🧑‍💻",
                                     url="https://t.me/OWNER_USERNAME",
                                 ),
                                 InlineKeyboardButton(
-                                    "💬 Support",
+                                    "『Support』💬 ",
                                     url="https://t.me/SUPPORT_GROUP",
                                 ),
                             ],
                             [
                                 InlineKeyboardButton(
-                                    "➕ Add to Group",
+                                    "『Add to Group』➕ ",
                                     url=f"https://t.me/{self.client.bot.username}?startgroup=true",
                                 ),
                                 InlineKeyboardButton(
-                                    "🤖 Commands List",
+                                    "『Commands List』🤖",
                                     callback_data="cmd:Commands",
                                 ),
                             ],
@@ -68,24 +69,25 @@ class Command(BaseCommand):
                 pass
             return
 
+        text: str = (
+            "『<i>Hello</i>』👋\n"
+            f"└ <i>User</i>: {M.sender.mention}"
+        )
+
         await self.client.bot.send_photo(
             chat_id=M.chat_id,
             photo="src/Assets/bot_image.jpg",
-            caption=(
-                "👋 <b>『Hello』</b>\n"
-                f"├ <b>User:</b> {M.sender.mention}\n"
-                "└ <i>Tap below to explore Lumi ✨</i>"
-            ),
+            caption=text,
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
-                            "👋 Hello",
+                            "『Hello』👋 ",
                             callback_data="cmd:start",
                         ),
                         InlineKeyboardButton(
-                            "✨ Intro",
+                            "『Intro』✨ ",
                             callback_data="cmd:start intro:true",
                         ),
                     ]

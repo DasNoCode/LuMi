@@ -120,7 +120,7 @@ class CommandHandler:
             now_ts: int = int(timestamp.second)
             afk_duration: int = (int(now_ts - sender.afk["duration"]))
             user_name: str = (
-                M.sender.user_name
+                M.sender.mention
                 or M.sender.user_full_name
                 or "User"
             )
@@ -152,13 +152,13 @@ class CommandHandler:
         if is_command:
             self._client.log.info(
                 f"[{msg_type}] {self._client.config.prefix}{context.cmd} from "
-                f"@{getattr(M.sender, 'user_name', 'user_full_name')} in {chat_name} at {timestamp.date()}"
+                f"{M.sender.mention} in {chat_name} at {timestamp.date()}"
             )
         else:
             return self._client.log.info(
-                f"[{msg_type}] from {M.sender.user_name} in {chat_name} at {timestamp.date()}"
+                f"[{msg_type}] from {M.sender.mention} in {chat_name} at {timestamp.date()}"
             )
-             
+
         # --- Empty Command ---
         if M.message == self._client.config.prefix:
             return await self._client.bot.send_message(
@@ -252,37 +252,55 @@ class CommandHandler:
         
         if getattr(cmd.config, "OnlyAdmin", False):
             for perm in required_perms:
-                bot_perm: bool = await self._client.bot.get_chat_member(M.chat_id, self._client.bot_user_id)
-                if not getattr(bot_perm, perm, True):
+                _, perms = await self._client.get_user_permissions(M.chat_id, self._client.bot_user_id)
+                if not perms.get(perm):
+                    text: str = (
+                        "『<i>Permission Required</i>』⚠️\n"
+                        f"└ <i>Missing Permission</i>: {perm}"
+                    )
                     return await self._client.bot.send_message(
                         chat_id=M.chat_id,
-                        text=f"🤖 Bot must have '{perm}' permission to execute this command.",
+                        text=text,
                         reply_to_message_id=M.message_id,
                     )
-                    
-        if M.sender.user_role == "admin":
-            for perm in required_perms:
-                has_perm: bool = M.sender.permissions.get(perm)
-                if not has_perm:
-                    return await self._client.bot.send_message(
-                        chat_id=M.chat_id,
-                        text=f"❌ You must have '{perm}' permission to run this command.",
-                        reply_to_message_id=M.message_id,
-                    )
+            role, perms = await self._client.get_user_permissions(M.chat_id, M.sender.user_id)     
+            if str(role) == "administrator":
+                for perm in required_perms:
+                    if not perms.get(perm):
+                        text: str = (
+                            "『<i>Permission Required</i>』⚠️\n"
+                            f"└ <i>Missing Permission</i>: {perm}"
+                        )
+                        return await self._client.bot.send_message(
+                            chat_id=M.chat_id,
+                            text=text,
+                            reply_to_message_id=M.message_id,
+                        )
+            elif str(role) == "member":
+                text: str = (
+                    "『<i>Permission Denied</i>』❌\n"
+                    "└ <i>Access</i>: You do not have permission to run this command."
+                )
+                await self._client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=text,
+                    parse_mode="HTML",
+                    reply_to_message_id=M.message_id,
+                )
 
-        # --- Execute Command ---
+        # --- Execute Command --- 
         try:
           await cmd.exec(M, context)
         except NetworkError as e:
-            self._client.log.error("[NetworkError] Failed to exeute the command!")
-
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            self.client.log.error(f"[ERROR] {tb.filename.split('/')[-1]}: {tb.lineno} | {e}")
         # --- Mention AFK Users ---
         users: list[User] = []
         
         if M.reply_to_user:
             users.append(M.reply_to_user)
-        elif M.mentioned:
-            users.extend(M.mentioned)
+        elif M.mentions:
+            users.extend(M.mentions)
         
         for mentioned_user in users:
             mentioned_data: User = get_user(mentioned_user.user_id)
@@ -317,7 +335,7 @@ class CommandHandler:
             if old_level["level"] != new_level["level"]:
                 rank_cmd: BaseCommand = self._commands.get("rank")
                 if rank_cmd:
-                    await rank_cmd.exec(M, self._parse_args(f" caption:@{M.sender.user_name or M.sender.user_full_name} you levelled up 🎉!\n{old_level['level']} -> {new_level['level']}"))
+                    await rank_cmd.exec(M, self._parse_args(f" caption:@{M.sender.mention or M.sender.user_full_name} you levelled up 🎉!\n{old_level['level']} -> {new_level['level']}"))
                 
 
 

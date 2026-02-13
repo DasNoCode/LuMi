@@ -32,23 +32,25 @@ class Command(BaseCommand):
 
         if M.reply_to_user:
             users.append(M.reply_to_user)
-        elif M.mentioned:
-            users.extend(M.mentioned)
+        elif M.mentions:
+            users.extend(M.mentions)
 
         if not users:
+            text: str = (
+                "『<i>Invalid Usage</i>』❗\n"
+                "└ <i>Action</i>: Reply or mention a user to warn"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "❗ <b>『Invalid Usage』</b>\n"
-                    "└ <i>Reply to a user or mention them to warn.</i>"
-                ),
+                text=text,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
             return
 
         for user in users:
-            if user.user_id == self.client.bot.id:
+            if user.is_bot or user.user_id == self.client.bot.id:
                 continue
 
             raw_text: str = context.get("text", "") or ""
@@ -72,23 +74,19 @@ class Command(BaseCommand):
                 )
 
                 text: str = (
-                    "<blockquote>"
-                    "🚫 <b>『User Kicked』</b>\n"
-                    f"├ <b>User:</b> {user.user_full_name}\n"
-                    f"├ <b>By:</b> @{M.sender.user_name}\n"
-                    "├ <b>Warns:</b> 3/3\n"
-                    f"└ <b>Reason:</b> {reason or 'No reason provided'}"
-                    "</blockquote>"
+                    "『<i>User Kicked</i>』🚫\n"
+                    f"├ <i>User</i>: {user.mention}\n"
+                    f"├ <i>By</i>: {M.sender.mention}\n"
+                    "├ <i>Warns</i>: 3/3\n"
+                    f"└ <i>Reason</i>: {reason or 'No reason provided'}"
                 )
             else:
                 text = (
-                    "<blockquote>"
-                    "⚠️ <b>『User Warned』</b>\n"
-                    f"├ <b>User:</b> {user.user_full_name}\n"
-                    f"├ <b>By:</b> @{M.sender.user_name}\n"
-                    f"├ <b>Warns:</b> {count}/3\n"
-                    f"└ <b>Reason:</b> {reason or 'No reason provided'}"
-                    "</blockquote>"
+                    "『<i>User Warned</i>』📍\n"
+                    f"├ <i>User</i>: {user.mention}\n"
+                    f"├ <i>By</i>: {M.sender.mention}\n"
+                    f"├ <i>Warns</i>: {count}/3\n"
+                    f"└ <i>Reason</i>: {reason or 'No reason provided'}"
                 )
 
             await self.client.bot.send_message(

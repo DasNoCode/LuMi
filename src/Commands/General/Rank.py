@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import os
 import traceback
 from typing import Any, TYPE_CHECKING
 
 from Libs import BaseCommand
 from Helpers import get_rank
+
 
 if TYPE_CHECKING:
     from telegram import User, Message
@@ -23,34 +23,29 @@ class Command(BaseCommand):
                 "category": "general",
                 "description": {
                     "content": "Show the rank of a user based on XP.",
-                }
+                },
             },
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         try:
             users: list[User] = []
-            
-            context: str = context.get("flags", {})
-            
-            caption = context.get("caption")
-            
+
+            flags: dict[str, Any] = context.get("flags", {})
+            caption: str | None = flags.get("caption")
+
             if M.reply_to_user:
                 users.append(M.reply_to_user)
-            elif M.mentioned:
-                users.extend(M.mentioned)
+            elif M.mentions:
+                users.extend(M.mentions)
             else:
                 users.append(M.sender)
 
             for user in users:
-                db_user = self.client.db.get_user_by_user_id(user.user_id)
-                xp: int = db_user.xp
-
-                user_name: str = (
-                    user.user_name
-                    or user.user_full_name
-                    or "User"
+                db_user = self.client.db.get_user_by_user_id(
+                    user.user_id
                 )
+                xp: int = db_user.xp if db_user else 0
 
                 rank_data: dict[str, Any] = get_rank(xp)
 
@@ -67,25 +62,34 @@ class Command(BaseCommand):
                     if level > 1
                     else 0
                 )
-                avatar_url: str | None = await self.client.profile_photo_url(user_id=user.user_id)
-                card_url = self.client.utils.rank_card(
-                        user_name,
-                        avatar_url,
-                        level,
-                        current_xp,
-                        level_xp_target,
-                        previous_level_xp,
+
+                avatar_url: str | None = (
+                    await self.client.profile_photo_url(
+                        user_id=user.user_id
                     )
-                text = (
-                    f'<a href="{card_url}">&#8204;</a>'
-                    "<blockquote>"
-                    f"├Rank name: {rank_name} {rank_emoji}\n"
-                    f"├Next rank: {next_rank_name} {next_rank_emoji}\n"
-                    f"└XP needed: {level_xp_target - current_xp}"
-                    "</blockquote>"
-                    f"\n{caption or ''}"
                 )
-                
+
+                card_url: str = self.client.utils.rank_card(
+                    user.mention,
+                    avatar_url,
+                    level,
+                    current_xp,
+                    level_xp_target,
+                    previous_level_xp,
+                )
+
+                xp_needed: int = level_xp_target - current_xp
+
+                text: str = (
+                    f'<a href="{card_url}">&#8204;</a>'
+                    "『<i>User Rank</i>』🏆\n"
+                    f"├ <i>User</i>: {user.mention}\n"
+                    f"├ <i>Rank</i>: {rank_name} {rank_emoji}\n"
+                    f"├ <i>Next Rank</i>: {next_rank_name} {next_rank_emoji}\n"
+                    f"└ <i>XP Needed</i>: {xp_needed}"
+                    + (f"\n\n{caption}" if caption else "")
+                )
+
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
                     text=text,
@@ -94,5 +98,6 @@ class Command(BaseCommand):
                 )
 
         except Exception as e:
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {tb.filename.split('/')[-1]}: {tb.lineno} | {e}")
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )

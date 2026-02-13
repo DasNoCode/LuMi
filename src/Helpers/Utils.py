@@ -135,10 +135,6 @@ class Utils:
         return [max(int(n), 0) for n in re.findall(r"-?\d+", content)]
 
     @staticmethod
-    def get_urls(text: str) -> Set[str]:
-        return set(re.findall(r"https?://[^\s]+", text))
-
-    @staticmethod
     def capitalize(s: str) -> str:
         return s.capitalize() if s else s
 

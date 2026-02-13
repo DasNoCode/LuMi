@@ -1,6 +1,9 @@
 from __future__ import annotations
+
+import traceback
 from typing import Any
-from telegram import ChatPermissions, InlineKeyboardButton, InlineKeyboardMarkup, User
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
+from telegram.constants import ParseMode
 
 
 class EventHandler:
@@ -11,75 +14,120 @@ class EventHandler:
         if not M.is_event:
             return
 
-        chat_data = self._client.db.get_group_by_chat_id(M.chat_id)
-        events_on: bool = bool(getattr(chat_data, "events", False))
-        captcha_on: bool = bool(getattr(chat_data, "captcha", False))
+        # Bot added to group
+        if (
+            M.event_type == "join"
+            and M.event_user.user_id == self._client.bot_user_id
+        ):
+            return await self._bot_joined_group(M.chat_id)
 
-        if not events_on:
+        chat_data = self._client.db.get_group_by_chat_id(M.chat_id)
+
+        if not getattr(chat_data, "events", False):
             return
-        
-        await self._client.bot.delete_message(
+
+        try:
+            await self._client.bot.delete_message(M.chat_id, M.message_id)
+        except Exception:
+            pass
+
+        text: str | None = None
+
+        if M.event_type == "join":
+            if getattr(chat_data, "captcha", False) and not M.action_by:
+                return await self._send_captcha(M)
+
+            if M.action_by:
+                text = (
+                    "『<i>User Added</i>』👋\n"
+                    f"├ <i>User</i>: {M.event_user.mention}\n"
+                    f"└ <i>Added By</i>: {M.action_by.mention}"
+                )
+            else:
+                text = (
+                    "『<i>User Joined</i>』👋\n"
+                    f"└ <i>User</i>: {M.event_user.mention}"
+                )
+
+        elif M.event_type == "leave":
+            text = (
+                "『<i>User Left</i>』🚪\n"
+                f"└ <i>User</i>: {M.event_user.mention}"
+            )
+
+        elif M.event_type == "kick":
+            text = (
+                "『<i>User Removed</i>』❌\n"
+                f"├ <i>User</i>: {M.event_user.mention}\n"
+                f"└ <i>Removed By</i>: {M.action_by.mention if M.action_by else 'Admin'}"
+            )
+
+        if text:
+            msg = await self._client.bot.send_message(
+                chat_id=M.chat_id,
+                text=text,
+                parse_mode=ParseMode.HTML,
+            )
+
+    async def _send_captcha(self, M: Any) -> None:
+        try:
+            await self._client.bot.restrict_chat_member(
+                M.chat_id,
+                M.event_user.user_id,
+                ChatPermissions.no_permissions(),
+            )
+        except Exception as e:
+            self._client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )
+
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "『Verify Captcha』",
+                        callback_data=(
+                            f"cmd:captcha user_id:{M.event_user.user_id}"
+                        ),
+                    )
+                ]
+            ]
+        )
+
+        text: str = (
+            "『<i>Verification Required</i>』🔐\n"
+            f"├ <i>User</i>: {M.event_user.mention}\n"
+            "└ <i>Action</i>: Please verify to start chatting."
+        )
+
+        await self._client.bot.send_message(
             chat_id=M.chat_id,
-            message_id=M.message_id,
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+
+    async def _bot_joined_group(self, chat_id: int) -> None:
+        role, _ = await self._client.get_user_permissions(
+            chat_id=chat_id,
+            user_id=self._client.bot_user_id,
         )
         
-        if M.event_type == "join":
-            user: User = M.event_user
-            name: str = user.user_name or user.user_full_name
-            is_added: bool = bool(M.action_by)
+        requirement_line: str = (
+            "├ <i>Requirement</i>: Promote me to Admin\n"
+            if role not in ("administrator", "creator")
+            else ""
+        )
+        
+        text: str = (
+            "『<i>Introduction</i>』🤖\n"
+            f"├ <i>Name</i>: {self._client.bot_name}\n"
+            f"{requirement_line}"
+            f"└ <i>Help</i>: Use {self._client.prefix}help"
+        )
 
-            if captcha_on and not is_added:
-                try:
-                    await self._client.bot.restrict_chat_member(
-                        chat_id=M.chat_id,
-                        user_id=user.user_id,
-                        permissions=ChatPermissions.no_permissions(),
-                    )
-                except Exception as e:
-                    self._client.log.error(f"[Captcha Restrict Error] {e}")
-
-                keyboard = InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                text="🔐 Verify Captcha",
-                                callback_data=f"cmd:captcha type:captcha user_id:{user.user_id}",
-                            )
-                        ]
-                    ]
-                )
-
-                text: str = (
-                    f"👋 @{name}\n"
-                    f"Before you start chatting, please verify you are human.\n"
-                    f"Tap the button below 👇"
-                )
-
-                await self._client.bot.send_message(
-                    chat_id=M.chat_id, text=text, reply_markup=keyboard
-                )
-                return
-
-            if is_added:
-                by: str = M.action_by.user_name or M.action_by.user_full_name
-                text = f"👋 @{name} was added by @{by}"
-            else:
-                text = f"👋 @{name} joined the chat."
-
-            await self._client.bot.send_message(chat_id=M.chat_id, text=text)
-            return
-
-        if M.event_type == "leave":
-            name: str = M.event_user.user_name or M.event_user.user_full_name
-            msg = await self._client.bot.send_message(
-                chat_id=M.chat_id, text=f"👋 @{name} left the chat."
-            )
-
-        if M.event_type == "kick":
-            name: str = M.event_user.user_name or M.event_user.user_full_name
-            by: str = M.action_by.user_name or M.action_by.user_full_name
-            msg = await self._client.bot.send_message(
-                chat_id=M.chat_id, text=f"❌ @{name} was removed by @{by}."
-            )
-            
-        await self._client.delete_message_after(chat_id=M.chat_id, message_id=msg.id, delay=20)
+        await self._client.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.HTML,
+        )

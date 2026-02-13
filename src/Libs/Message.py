@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from typing import Union, Optional, List, Dict, Any, TYPE_CHECKING, Tuple
 from telegram import (
     CallbackQuery,
@@ -15,17 +16,7 @@ if TYPE_CHECKING:
 
 
 class Message:
-    _media_types: List[str] = [
-        "voice",
-        "animation",
-        "audio",
-        "photo",
-        "video",
-        "document",
-        "video_note",
-        "sticker",
-    ]
-
+    
     def __init__(
         self,
         client: SuperClient,
@@ -95,138 +86,50 @@ class Message:
         self.reply_to_user: Optional[JsonObject] = None
         self.msg_type: Optional[str] = None
         self.file_id: Optional[str] = None
-        self.user_status: Optional[str] = None
-        self.urls: List[str] | str = []
-        self.numbers: List[int] = []
-        self.mentioned: List[JsonObject] = []
-        self.user_roles: Dict[int, str] = {}
-
-    def _greeting(self) -> None:
-        m: Optional[PTBMessage] = self._m
-        if not m:
-            return
-
-        if getattr(m, "new_chat_members", None):
-            user: User = m.new_chat_members[0]
-            self.event_type = "join"
-            self.event_user = JsonObject(
-                {
-                    "user_id": user.id,
-                    "mention": self.mention(user),
-                    "user_name": user.username,
-                    "user_full_name": user.full_name,
-                }
-            )
-            if m.from_user and m.from_user.id != user.id:
-                self.action_by = JsonObject(
-                    {
-                        "user_id": m.from_user.id,
-                        "mention": self.mention(m.from_user),
-                        "user_name": m.from_user.username,
-                        "user_full_name": m.from_user.full_name,
-                    }
-                )
-
-        elif getattr(m, "left_chat_member", None):
-            user: User = m.left_chat_member
-            self.event_type = (
-                "kick" if (m.from_user and m.from_user.id != user.id) else "leave"
-            )
-            self.event_user = JsonObject(
-                {
-                    "user_id": user.id,
-                    "mention": self.mention(user),
-                    "user_name": user.username,
-                    "user_full_name": user.full_name,
-                }
-            )
-            if self.event_type == "kick":
-                self.action_by = JsonObject(
-                    {
-                        "user_id": m.from_user.id,
-                        "mention": self.mention(m.from_user),
-                        "user_name": m.from_user.username,
-                        "user_full_name": m.from_user.full_name,
-                    }
-                )
-
-    async def _get_user_permissions(
-        self,
-        user_id: int,
-    ) -> Tuple[ChatMemberStatus, Optional[Dict[str, bool]]]:
-        try:
-            member: ChatMember = await self._client.bot.get_chat_member(
-                self.chat_id,
-                user_id,
-            )
-        except NetworkError as e:
-            member: ChatMember = await self._client.bot.get_chat_member(
-                self.chat_id,
-                user_id,
-            )
-            return self._client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: Unable to fetch user data!")
-            
-        permissions: Optional[Dict[str, bool]] = {
-            "can_change_info": getattr(member, "can_change_info", True),
-            "can_delete_messages": getattr(member, "can_delete_messages", True),
-            "can_invite_users": getattr(member, "can_invite_users", True),
-            "can_pin_messages": getattr(member, "can_pin_messages", True),
-            "can_promote_members": getattr(member, "can_promote_members", True),
-            "can_restrict_members": getattr(member, "can_restrict_members", True),
-        }
-        return member.status, permissions
+        self.mentions: List[JsonObject] = []
 
     async def _get_mentioned_users(self, text: str) -> List[JsonObject]:
-        mentioned: List[JsonObject] = []
+        mentions: List[JsonObject] = []
 
         for word in text.split():
             if not word.startswith("@"):
                 continue
             try:
-                user: User = await self._client.get_users(word)
+                user: User = await self._client.pyrogram_Client.get_users(word)
                 full_name: str = (
                     f"{user.first_name or ''} {user.last_name or ''}".strip()
                 )
-
-                role, perms = await self._get_user_permissions(user.id)
-
-                mentioned.append(
+                mentions.append(
                     JsonObject(
                         {
                             "user_id": user.id,
                             "mention": self.mention(user),
-                            "user_name": user.username,
-                            "user_full_name": full_name,
-                            "user_role": role,
-                            "permissions": perms,
+                            "is_bot": user.is_bot,
+                            "user_full_name": full_name
                         }
                     )
                 )
             except Exception as e:
-                self._client.log.error(
-                    f"[ERROR][_get_mentioned_users] Could not resolve {word}: {e}"
-                )
+                tb = traceback.extract_tb(e.__traceback__)[-1]
+                self._client.log.error(f"[ERROR] {tb.filename.split('/')[-1]}: {tb.lineno} | {e}")
 
-        return mentioned
+        return mentions
 
     def _extract_media(self) -> None:
-        def _get_file_id(media: Any) -> Optional[str]:
-            if isinstance(media, (list, tuple)) and media:
-                return media[-1].file_id
-            return getattr(media, "file_id", None)
+        target = self.reply_to_message or self._m
+        if not target: return
+        
+        attach = target.effective_attachment
+        if attach:
+            if isinstance(attach, (list, tuple)):
+                self.file_id = attach[-1].file_id
+            else:
+                self.file_id = attach.file_id
+            for t in ["photo", "video", "animation", "sticker", "audio", "voice"]:
+                if getattr(target, t, None):
+                    self.msg_type = t
+                    break
 
-        for src in (self.reply_to_message, self._m):
-            if not src:
-                continue
-            for mtype in self._media_types:
-                media: Any = getattr(src, mtype, None)
-                if not media:
-                    continue
-                file_id: Optional[str] = _get_file_id(media)
-                if file_id:
-                    self.msg_type = mtype
-                    self.file_id = file_id
-                    return
                 
     def mention(self, u: Any) -> str:
         username = getattr(u, "username", None) or getattr(u, "user_name", None)
@@ -243,42 +146,78 @@ class Message:
             return self
 
         self._extract_media()
-        self.urls = self._client.utils.get_urls(self.message)
 
         if self.sender_raw:
-            member = await self._get_user_permissions(self.sender_raw.id)
-            if member is None:
-                role, perms = None, None
-            else:
-                role, perms = member
             self.sender = JsonObject(
                 {
                     "user_id": self.sender_raw.id,
                     "mention": self.mention(self.sender_raw),
-                    "user_name": self.sender_raw.username,
-                    "user_full_name": self.sender_raw.full_name,
-                    "user_role": role,
-                    "permissions": perms,
+                    "is_bot": self.sender_raw.is_bot,
+                    "user_full_name": self.sender_raw.full_name
                 }
             )
 
         if self.reply_to_message and getattr(self.reply_to_message, "from_user", None):
             reply_user: User = self.reply_to_message.from_user
             if reply_user.id != (self.sender_raw.id if self.sender_raw else 0):
-                role, perms = await self._get_user_permissions(reply_user.id)
                 self.reply_to_user = JsonObject(
                     {
                         "user_id": reply_user.id,
                         "mention": self.mention(reply_user),
-                        "user_name": reply_user.username,
-                        "user_full_name": reply_user.full_name,
-                        "user_role": role,
-                        "permissions": perms,
+                        "is_bot": reply_user.is_bot,
+                        "user_full_name": reply_user.full_name
+                    }
+                )
+        for word in (self.message).split():
+            if not word.startswith("@"):
+                self.mentions = await self._get_mentioned_users(self.message)
+        return self
+
+    def _greeting(self) -> None:
+        m: Optional[PTBMessage] = self._m
+        if not m:
+            return
+
+        if getattr(m, "new_chat_members", None):
+            user: User = m.new_chat_members[0]
+            self.event_type = "join"
+            self.event_user = JsonObject(
+                {
+                    "user_id": user.id,
+                    "mention": self.mention(user),
+                    "is_bot": user.is_bot,
+                    "user_full_name": user.full_name,
+                }
+            )
+            if m.from_user and m.from_user.id != user.id:
+                self.action_by = JsonObject(
+                    {
+                        "user_id": m.from_user.id,
+                        "mention": self.mention(m.from_user),
+                        "is_bot": m.from_user.is_bot,
+                        "user_full_name": m.from_user.full_name,
                     }
                 )
 
-        self.mentioned = await self._get_mentioned_users(self.message)
-        if self.reply_to_user:
-            self.mentioned.append(self.reply_to_user)
-
-        return self
+        elif getattr(m, "left_chat_member", None):
+            user: User = m.left_chat_member
+            self.event_type = (
+                "kick" if (m.from_user and m.from_user.id != user.id) else "leave"
+            )
+            self.event_user = JsonObject(
+                {
+                    "user_id": user.id,
+                    "mention": self.mention(user),
+                    "is_bot": user.is_bot,
+                    "user_full_name": user.full_name,
+                }
+            )
+            if self.event_type == "kick":
+                self.action_by = JsonObject(
+                    {
+                        "user_id": m.from_user.id,
+                        "mention": self.mention(m.from_user),
+                        "is_bot": m.from_user.is_bot,
+                        "user_full_name": m.from_user.full_name,
+                    }
+                )

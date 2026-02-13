@@ -1,5 +1,4 @@
 from __future__ import annotations
-import traceback
 from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 
@@ -28,7 +27,7 @@ class Command(BaseCommand):
             },
         )
 
-    async def exec(self, M: Message, context: list[Any]) -> None:
+    async def exec(self, M: Message, context: dict[str, Any]) -> None:
         try:
             raw_text: str = context.get("text", "").strip()
 
@@ -43,19 +42,19 @@ class Command(BaseCommand):
                 reason=reason,
             )
 
-            afk_text: str = (
-                "💤 <b>『AFK Enabled』</b>\n"
-                f"├ <b>User:</b> @{M.sender.user_name or M.sender.user_full_name}\n"
+            text: str = (
+                "『<i>AFK Enabled</i>』💤\n"
+                f"├ <i>User</i>: {M.sender.mention}\n"
                 + (
-                    f"└ <b>Reason:</b> {reason}"
+                    f"└ <i>Reason</i>: {reason}"
                     if reason
-                    else "└ <i>No reason provided.</i>"
+                    else "└ <i>Reason</i>: No reason provided"
                 )
             )
 
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=afk_text,
+                text=text,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
@@ -65,12 +64,14 @@ class Command(BaseCommand):
                 f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
             )
 
+            error_text: str = (
+                "『<i>Error</i>』⚠️\n"
+                "└ <i>Status</i>: Something went wrong"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "⚠️ <b>『Error』</b>\n"
-                    "└ <i>Something went wrong. Please try again later.</i>"
-                ),
+                text=error_text,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )

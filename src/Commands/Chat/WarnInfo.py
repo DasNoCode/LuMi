@@ -35,7 +35,7 @@ class Command(BaseCommand):
         chat = self.client.db.get_group_by_chat_id(M.chat_id)
         warns: list[dict[str, Any]] = chat.warns or []
 
-        target = M.reply_to_user or (M.mentioned[0] if M.mentioned else None)
+        target = M.reply_to_user or (M.mentions[0] if M.mentions else None)
 
         if target:
             entry = next(
