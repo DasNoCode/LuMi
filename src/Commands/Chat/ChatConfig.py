@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import traceback
 from typing import Any, TYPE_CHECKING
 
 from Libs import BaseCommand
@@ -18,8 +17,8 @@ class Command(BaseCommand):
             client,
             handler,
             {
-                "command": "settings",
-                "category": "chat",
+                "command": "chatconfig",
+                "category": "Chat",
                 "description": {
                     "content": "Enable or disable greetings and captcha.",
                     "usage": "",
@@ -53,13 +52,14 @@ class Command(BaseCommand):
                         )
 
                         if not getattr(me, "can_restrict_members", False):
+                            text = (
+                                "『<i>Permission Required</i>』❌\n"
+                                "└ <i>Requirement</i>: can_restrict_members"
+                            )
+
                             await self.client.bot.send_message(
                                 chat_id=M.chat_id,
-                                text=(
-                                    "❌ <b>『Permission Required』</b>\n"
-                                    "└ <i>I need can_restrict_members "
-                                    "permission to enable captcha.</i>"
-                                ),
+                                text=text,
                                 parse_mode="HTML",
                             )
                             return
@@ -74,25 +74,23 @@ class Command(BaseCommand):
                 [
                     [
                         InlineKeyboardButton(
-                            text=f"Greetings {'Enabled ✅' if greetings_on else 'Disabled ❌'}",
-                            callback_data="cmd:settings toggle:greetings",
+                            text=f"『Greetings』",
+                            callback_data="cmd:chatconfig toggle:greetings",
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            text=f"Captcha {'Enabled ✅' if captcha_on else 'Disabled ❌'}",
-                            callback_data="cmd:settings toggle:captcha",
+                            text=f"『Captcha』",
+                            callback_data="cmd:chatconfig toggle:captcha",
                         )
                     ],
                 ]
             )
 
             text: str = (
-                "<blockquote>"
-                "⚙️ <b>『Chat Settings』</b>\n"
-                f"├ <b>Greetings:</b> {'Enabled ✅' if greetings_on else 'Disabled ❌'}\n"
-                f"└ <b>Captcha:</b> {'Enabled ✅' if captcha_on else 'Disabled ❌'}"
-                "</blockquote>"
+                "『<i>Chat Configuration</i>』⚙️\n"
+                f"├ <i>Greetings</i>: {'Enabled' if greetings_on else 'Disabled'}\n"
+                f"└ <i>Captcha</i>: {'Enabled' if captcha_on else 'Disabled'}"
             )
 
             if M.is_callback:
@@ -109,6 +107,7 @@ class Command(BaseCommand):
                     text=text,
                     reply_markup=keyboard,
                     parse_mode="HTML",
+                    reply_to_message_id=M.message_id,
                 )
 
         except Exception as e:
@@ -116,12 +115,14 @@ class Command(BaseCommand):
                 f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
             )
 
+            text = (
+                "『<i>Error</i>』⚠️\n"
+                "└ <i>Action</i>: Please try again later"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "⚠️ <b>『Error』</b>\n"
-                    "└ <i>Something went wrong. Please try again later.</i>"
-                ),
+                text=text,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )

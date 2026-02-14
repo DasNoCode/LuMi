@@ -17,10 +17,10 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "ban",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Ban one or more users from the chat.",
-                    "usage": "<@mention> or <reply>",
+                    "usage": "[@mention] or [reply]",
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,

@@ -18,7 +18,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "unmute",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Unmute one or more users in the chat.",
                     "usage": "<@mention> or <reply>",

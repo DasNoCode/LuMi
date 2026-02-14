@@ -1,135 +1,133 @@
 from __future__ import annotations
-import traceback
-from Libs import BaseCommand
+
 from typing import Any, TYPE_CHECKING
+
+from Libs import BaseCommand
+from telegram.error import BadRequest
 
 
 if TYPE_CHECKING:
-    from telegram import User
     from Libs import SuperClient, Message
     from Handler import CommandHandler
 
 
 class Command(BaseCommand):
+
     def __init__(self, client: SuperClient, handler: CommandHandler) -> None:
         super().__init__(
             client,
             handler,
             {
                 "command": "promote",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
-                    "content": "Promote one or more users to admin.",
-                    "usage": "<@mention> or <reply>",
+                    "content": "Promote a user with limited or full admin rights.",
+                    "usage": "<reply | @user> [full]",
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
-                "admin_permissions": ["can_promote_members"],
             },
         )
 
-    async def exec(self, M: Message, context: list[Any]) -> None:
-        try:
-            users: list[User] = []
+    async def exec(self, M: Message, context: dict[str, Any]) -> None:
 
-            if M.reply_to_user:
-                users.append(M.reply_to_user)
-            elif M.mentions:
-                users.extend(M.mentions)
+        text: str = context.get("text", "") or ""
+        is_full: bool = "full" in text.lower()
 
-            if not users:
-                await self.client.bot.send_message(
-                    chat_id=M.chat_id,
-                    text=(
-                        "❗ <b>『Invalid Usage』</b>\n"
-                        "└ <i>Mention at least one user or reply to a message.</i>"
-                    ),
-                    reply_to_message_id=M.message_id,
-                    parse_mode="HTML",
-                )
-                return
+        target = (
+            M.reply_to_user
+            or (M.mentions[0] if M.mentions else None)
+        )
 
-            for user in users:
-
-                if user.user_id == M.sender.user_id:
-                    await self.client.bot.send_message(
-                        chat_id=M.chat_id,
-                        text=(
-                            "❌ <b>『Action Denied』</b>\n"
-                            "└ <i>You cannot promote yourself.</i>"
-                        ),
-                        reply_to_message_id=M.message_id,
-                        parse_mode="HTML",
-                    )
-                    continue
-
-                member = await self.client.bot.get_chat_member(
-                    M.chat_id,
-                    user.user_id,
-                )
-
-                if member.status == "creator":
-                    await self.client.bot.send_message(
-                        chat_id=M.chat_id,
-                        text=(
-                            "❌ <b>『Action Denied』</b>\n"
-                            f"└ <i>Cannot promote group owner: "
-                            f"{user.user_full_name}</i>"
-                        ),
-                        reply_to_message_id=M.message_id,
-                        parse_mode="HTML",
-                    )
-                    continue
-
-                if user.user_id == M.bot_user_id:
-                    await self.client.bot.send_message(
-                        chat_id=M.chat_id,
-                        text=(
-                            "❌ <b>『Action Denied』</b>\n"
-                            "└ <i>I cannot promote myself.</i>"
-                        ),
-                        reply_to_message_id=M.message_id,
-                        parse_mode="HTML",
-                    )
-                    continue
-
-                await self.client.bot.promote_chat_member(
-                    chat_id=M.chat_id,
-                    user_id=user.user_id,
-                    can_change_info=True,
-                    can_post_messages=True,
-                    can_edit_messages=True,
-                    can_delete_messages=True,
-                    can_invite_users=True,
-                    can_restrict_members=True,
-                    can_pin_messages=True,
-                    can_promote_members=True,
-                    is_anonymous=False,
-                )
-
-                await self.client.bot.send_message(
-                    chat_id=M.chat_id,
-                    text=(
-                        "✅ <b>『User Promoted』</b>\n"
-                        f"├ <b>User:</b> "
-                        f"{user.user_full_name or user.user_name}\n"
-                        f"└ <b>ID:</b> <code>{user.user_id}</code>"
-                    ),
-                    reply_to_message_id=M.message_id,
-                    parse_mode="HTML",
-                )
-
-        except Exception as e:
-            self.client.log.error(
-                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+        if not target:
+            text: str = (
+                "『<i>Invalid Usage</i>』❌\n"
+                "└ <i>Action</i>: Reply or mention a user"
             )
 
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_to_message_id=M.message_id,
+            )
+            return
+
+        member = await self.client.bot.get_chat_member(
+            chat_id=M.chat_id,
+            user_id=target.user_id,
+        )
+
+        if member.status == "creator":
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
                 text=(
-                    "⚠️ <b>『Error』</b>\n"
-                    "└ <i>Something went wrong. Please try again later.</i>"
+                    "❌ <b>『Action Denied』</b>\n"
+                    f"└ <i>Cannot promote group owner: "
+                    f"{target.mention}</i>"
                 ),
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
+            return
+
+        if target.user_id == self.client.bot_user_id:
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    "❌ <b>『Action Denied』</b>\n"
+                    "└ <i>I cannot promote myself.</i>"
+                ),
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
+            )
+            return
+
+        try:
+
+            if is_full:
+                await self.client.bot.promote_chat_member(
+                    chat_id=M.chat_id,
+                    user_id=target.user_id,
+                    can_manage_chat=True,
+                    can_delete_messages=True,
+                    can_manage_video_chats=True,
+                    can_restrict_members=True,
+                    can_promote_members=True,
+                    can_change_info=True,
+                    can_invite_users=True,
+                    can_pin_messages=True,
+                    is_anonymous=False,
+                )
+                mode_text = "Full Admin Rights"
+
+            else:
+                await self.client.bot.promote_chat_member(
+                    chat_id=M.chat_id,
+                    user_id=target.user_id,
+                    can_change_info=True,
+                    can_delete_messages=True,
+                    can_invite_users=True,
+                    can_pin_messages=True,
+                    is_anonymous=False,
+                )
+                mode_text = "Limited Admin Rights"
+
+        except BadRequest as e:
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )
+            return
+
+        text = (
+            "『<i>User Promoted</i>』📈\n"
+            f"├ <i>User</i>: {target.mention}\n"
+            f"└ <i>Mode</i>: {mode_text}"
+        )
+
+        await self.client.bot.send_message(
+            chat_id=M.chat_id,
+            text=text,
+            parse_mode="HTML",
+            reply_to_message_id=M.message_id,
+        )

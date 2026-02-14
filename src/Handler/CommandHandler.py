@@ -117,7 +117,7 @@ class CommandHandler:
             if M.message[1:] == "afk":
                 return
         
-            now_ts: int = int(timestamp.second)
+            now_ts: int = int(timestamp.timestamp())
             afk_duration: int = (int(now_ts - sender.afk["duration"]))
             user_name: str = (
                 M.sender.mention

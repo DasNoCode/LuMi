@@ -1,14 +1,17 @@
 from datetime import datetime
+import os
 from typing import Optional, Any, Dict, List
 from pymodm import connect
 from pymodm.errors import DoesNotExist
 from telegram import ChatPermissions
 
+from Libs.Client import SuperClient
 from Models import User, Chat, Bot
 
 
 class Database:
-    def __init__(self, url: str):
+    def __init__(self, url: str, client: SuperClient):
+        self._client: SuperClient = client
         connect(url)
 
     @staticmethod
@@ -201,7 +204,7 @@ class Database:
         if status is not None:
             afk_data["status"] = status
             afk_data["reason"] = reason
-            afk_data["duration"] = self.now().second if status else None
+            afk_data["duration"] = self.now().timestamp() if status else None
             afk_data["mentioned_msgs"] = (
                 [] if not status else afk_data.get("mentioned_msgs", [])
             )
@@ -225,6 +228,32 @@ class Database:
         photo_url: Optional[str],
     ) -> None:
         self._update_or_create_user(user_id, {"profile_photo_url": photo_url})
+
+    async def profile_to_url (self, user_id: int) -> str:
+        default_path: str = "src/Assets/image.png"
+    
+        db_user = self.get_user_by_user_id(user_id)
+        avatar_url: Optional[str] = getattr(db_user, "profile_photo", None)
+    
+        if avatar_url:
+            return avatar_url
+    
+        photo_id: Optional[str] = await self._client.get_profile_id(user_id)
+        if not photo_id:
+            avatar_url = self._client.utils.img_to_url(default_path)
+            self.set_user_profile_photo(user_id, avatar_url)
+            return avatar_url
+    
+        photo_path: str = await self._client.download_media(photo_id)
+        avatar_url = self._client.utils.img_to_url(photo_path)
+    
+        try:
+            os.remove(photo_path)
+        except Exception:
+            pass
+    
+        self.set_user_profile_photo(user_id, avatar_url)
+        return avatar_url
 
     # ---Bot DB functions 
     def _get_bot(self) -> Bot:

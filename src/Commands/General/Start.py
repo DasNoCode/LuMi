@@ -44,21 +44,21 @@ class Command(BaseCommand):
                         [
                             [
                                 InlineKeyboardButton(
-                                    "『Owner』🧑‍💻",
+                                    "『Owner』",
                                     url="https://t.me/OWNER_USERNAME",
                                 ),
                                 InlineKeyboardButton(
-                                    "『Support』💬 ",
+                                    "『Support』",
                                     url="https://t.me/SUPPORT_GROUP",
                                 ),
                             ],
                             [
                                 InlineKeyboardButton(
-                                    "『Add to Group』➕ ",
-                                    url=f"https://t.me/{self.client.bot.username}?startgroup=true",
+                                    "『Add to Group』 ",
+                                    url=f"https://t.me/{self.client.bot_user_name}?startgroup=true",
                                 ),
                                 InlineKeyboardButton(
-                                    "『Commands List』🤖",
+                                    "『Commands List』",
                                     callback_data="cmd:Commands",
                                 ),
                             ],

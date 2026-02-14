@@ -17,7 +17,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "warn",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Warn a user. Kicks at 3 warns.",
                     "usage": "<reply or mention> [reason]",

@@ -18,7 +18,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "unban",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Unban one or more users from the chat.",
                     "usage": "<@mention> or <reply>",

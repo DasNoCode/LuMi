@@ -17,7 +17,7 @@ class Command(BaseCommand):
             {
                 "command": "bans",
                 "aliases": ["banlist"],
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Show all banned users in this chat.",
                 },

@@ -64,7 +64,7 @@ class SuperClient:
         self.prefix: str = config.prefix
         self.bot_name: str = config.app_name
         
-        self.db = Database(config.url)
+        self.db = Database(config.url, self)
         self.command_handler = CommandHandler(self)
         self.event_handler = EventHandler(self)
         self.interaction_store: dict[tuple[str, int], dict[str, Any]] = {}
@@ -167,32 +167,6 @@ class SuperClient:
             set_key(".env", "BOT_USER_NAME", self.bot_user_name)
         
         self.log.info(f"Connected as @{self.bot_user_name} ({self.bot_user_id})")
-        
-    async def profile_photo_url(self, user_id: int) -> str:
-        default_path: str = "src/Assets/image.png"
-    
-        db_user = self.db.get_user_by_user_id(user_id)
-        avatar_url: Optional[str] = getattr(db_user, "profile_photo", None)
-    
-        if avatar_url:
-            return avatar_url
-    
-        photo_id: Optional[str] = await self.get_profile_id(user_id)
-        if not photo_id:
-            avatar_url = self.utils.img_to_url(default_path)
-            self.db.set_user_profile_photo(user_id, avatar_url)
-            return avatar_url
-    
-        photo_path: str = await self.download_media(photo_id)
-        avatar_url = self.utils.img_to_url(photo_path)
-    
-        try:
-            os.remove(photo_path)
-        except Exception:
-            pass
-    
-        self.db.set_user_profile_photo(user_id, avatar_url)
-        return avatar_url
 
     async def kick_chat_member(self, chat_id: Union[int, str], user_id: int ) -> None:
         await self.bot.ban_chat_member(chat_id=chat_id, user_id=user_id)
@@ -220,7 +194,7 @@ class SuperClient:
         loop.run_until_complete(self.initialize_bot())
         self.command_handler.load_commands("src/Commands")
         if self._app.job_queue:
-            self._app.job_queue.run_once(self.whos_that_pokemon_job, when=5)
+            self._app.job_queue.run_once(self.whos_that_pokemon_job, when=(random.randint(30, 60)*60))
         self.pyrogram_Client.start()
         self._app.run_polling()
 

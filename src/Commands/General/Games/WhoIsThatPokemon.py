@@ -19,7 +19,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "guess",
-                "category": "game",
+                "category": "Game",
                 "description": {
                     "content": "Guess the Pokémon in Who's That Pokémon.",
                     "usage": "<pokemon name>",

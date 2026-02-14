@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "all_bots",
                 "aliases": ["bots"],
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "List all bots present in this chat.",
                 },

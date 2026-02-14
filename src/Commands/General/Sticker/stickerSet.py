@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import os
 from pathlib import Path
 from typing import Any, TYPE_CHECKING, Dict, List
 
@@ -12,14 +12,13 @@ if TYPE_CHECKING:
     from Libs import SuperClient, Message
     from Handler import CommandHandler
 
-
 class Command(BaseCommand):
     def __init__(self, client: SuperClient, handler: CommandHandler) -> None:
         super().__init__(
             client,
             handler,
             {
-                "command": "sticker_set",
+                "command": "stickerset",
                 "aliases": ["createset", "newpack", "sset"],
                 "category": "sticker",
                 "description": {
@@ -34,210 +33,143 @@ class Command(BaseCommand):
         text: str = context.get("text", "").strip()
 
         emoji: str = flags.get("emoji") or (text.split()[0] if text else "✨")
-        title: str | None = flags.get("title")
-
-        if title and len(title) > 64:
-            await self.client.bot.send_message(
-                chat_id=M.chat_id,
-                text="❌ Title must be 64 characters or less.",
-                reply_to_message_id=M.message_id,
-            )
-            return
+        title_flag: str | None = flags.get("title")
 
         store_key = ("sticker", M.chat_id, M.sender.user_id)
         user_sets: List[Dict[str, Any]] = self.client.db.get_user_sticker_sets(M.sender.user_id)
 
         if M.is_callback:
-            try:
-                await self.client.bot.delete_message(
-                    chat_id=M.chat_id,
-                    message_id=M.message_id,
-                )
-            except Exception:
-                pass
-
             store = self.client.interaction_store.get(store_key)
             if not store:
-                return
+                text = (
+                    "『<i>Session Expired</i>』⏳\n"
+                    "└ <i>Status</i>: Please start again"
+                )
+                return await self.client.bot.answer_callback_query(chat_id=M.callback_id, text=text, show_alert=True)
 
-            file_id: str = store["file_id"]
-            is_video: bool = store["is_video"]
+            selected_set = flags.get("set")
+            force_new = flags.get("new") == "true"
+            
+            if selected_set:
+                target_pack = next((s for s in user_sets if s["pack_name"] == selected_set), None)
+                if target_pack:
+                    is_video_pack = target_pack["format"] == "video"
+                    if is_video_pack != store["is_video"]:
+                        text = (
+                            "『<i>Format Mismatch</i>』❌\n"
+                            "└ <i>Status</i>: Format Mismatch!"
+                        )
+                        return await self.client.bot.answer_callback_query(
+                            chtat_id=M.callback_id, text=text, show_alert=True
+                        )
+
+            file_id = store["file_id"]
+            is_video = store["is_video"]
+            is_native_sticker = store["is_native"]
+            is_animated = store.get("is_animated", False) 
             emoji = store["emoji"]
-            title = store["title"]
-            origin_msg_id: int = store["origin_msg_id"]
+            pack_title = store["title"] or f"{M.sender.user_full_name}'s Pack"
+            origin_msg_id = store["origin_msg_id"]
 
-            selected_set: str | None = flags.get("set")
-            force_new: bool = flags.get("new") == "true"
-
+            try: await self.client.bot.delete_message(chat_id=M.chat_id, message_id=M.message_id)
+            except: pass
         else:
             reply = M.reply_to_message
-            if not reply or not (reply.photo or reply.video or reply.animation):
-                await self.client.bot.send_message(
-                    chat_id=M.chat_id,
-                    text="❌ Reply to a photo, GIF, or video.",
-                    reply_to_message_id=M.message_id,
+            if not reply or not (reply.photo or reply.video or reply.animation or reply.sticker):
+                text = (
+                    "『<i>Invalid Action</i>』❌ \n"
+                    "└ <i>Instruction</i>: Reply to a photo, video, GIF, or sticker"
                 )
-                return
+                return await self.client.bot.send_message(parse_mode="HTML", chat_id=M.chat_id, text=text)
 
-            file_id: str = (
-                reply.animation.file_id
-                if reply.animation
-                else reply.video.file_id
-                if reply.video
+            is_native_sticker = bool(reply.sticker)
+            is_animated = bool(reply.sticker and reply.sticker.is_animated)
+            
+            is_video = bool(reply.video or reply.animation or (reply.sticker and (reply.sticker.is_video or reply.sticker.is_animated)))
+            
+            file_id = (
+                reply.sticker.file_id if reply.sticker 
+                else reply.animation.file_id if reply.animation 
+                else reply.video.file_id if reply.video 
                 else reply.photo[-1].file_id
             )
 
-            is_video: bool = bool(reply.video or reply.animation)
-            origin_msg_id: int = M.message_id
+            origin_msg_id = M.message_id
+            pack_title = title_flag or f"{M.sender.user_full_name}'s Pack"
 
             self.client.interaction_store[store_key] = {
-                "file_id": file_id,
-                "is_video": is_video,
-                "emoji": emoji,
-                "title": title,
-                "origin_msg_id": origin_msg_id,
+                "file_id": file_id, "is_video": is_video, "is_native": is_native_sticker,
+                "is_animated": is_animated, "emoji": emoji, "title": pack_title, "origin_msg_id": origin_msg_id,
             }
 
             if user_sets:
-                buttons: list[list[InlineKeyboardButton]] = []
-                row: list[InlineKeyboardButton] = []
-
+                buttons = []
+                row = []
                 for s in user_sets:
-                    row.append(
-                        InlineKeyboardButton(
-                            text=s["pack_title"],
-                            callback_data=f"cmd:sticker set:{s['pack_name']}",
-                        )
-                    )
-                    if len(row) == 2:
-                        buttons.append(row)
-                        row = []
-
-                if row:
-                    buttons.append(row)
-
-                buttons.append(
-                    [
-                        InlineKeyboardButton(
-                            text="➕ New Sticker Set",
-                            callback_data="cmd:sticker new:true",
-                        )
-                    ]
+                    row.append(InlineKeyboardButton(text=f"『{s['pack_title']}』", callback_data=f"cmd:stickerset set:{s['pack_name']}"))
+                    if len(row) == 2: buttons.append(row); row = []
+                if row: buttons.append(row)
+                buttons.append([InlineKeyboardButton(text="『New Set』", callback_data="cmd:stickerset new:true")])
+                text = (
+                    "『<i>Choose a Pack</i>』 📦\n"
+                    "├ Select an existing pack\n"
+                    "└ Or create a new one below"
                 )
+                return await self.client.bot.send_message(parse_mode="HTML", chat_id=M.chat_id, text=text, reply_markup=InlineKeyboardMarkup(buttons))
 
-                await self.client.bot.send_message(
-                    chat_id=M.chat_id,
-                    text="🗂 Choose a sticker set:",
-                    reply_markup=InlineKeyboardMarkup(buttons),
-                    reply_to_message_id=origin_msg_id,
-                )
-                return
+            selected_set, force_new = None, True
 
-            selected_set = None
-            force_new = True
-
-        loading = await self.client.bot.send_message(
-            chat_id=M.chat_id,
-            text="🔮",
-            reply_to_message_id=origin_msg_id,
-        )
-
-        input_path: Path | None = None
-        output_path: Path | None = None
+        loading = await self.client.bot.send_message(M.chat_id, "⌛", reply_to_message_id=origin_msg_id)
+        input_path, output_path = None, None
 
         try:
-            input_path = Path(await self.client.download_media(file_id))
-
-            if input_path.stat().st_size > 256 * 1024:
-                await self.client.bot.send_message(
-                    chat_id=M.chat_id,
-                    text="❌ File must be under 256 KB.",
-                    reply_to_message_id=origin_msg_id,
-                )
-                return
-
-            pack_type: str = "video" if is_video else "static"
-            pack_id: str = self.client.utils.random_text()
-            bot_username: str = self.client.bot.username.lower()
+            raw_path = await self.client.download_media(file_id)
+            input_path = Path(raw_path)
+            pack_type = "video" if is_video else "static"
 
             if force_new or not selected_set:
-                pack_name = (
-                    f"pack_{pack_id}_{M.sender.user_id}_{pack_type}_by_{bot_username}"
-                )
-                pack_title = (title or f"{M.sender.user_full_name}'s Stickers") + (
-                    f" ({n})"
-                    if (
-                        n := sum(
-                            1
-                            for s in user_sets
-                            if s["pack_title"].startswith(
-                                title or f"{M.sender.user_full_name}'s Stickers"
-                            )
-                        )
-                    )
-                    else ""
-                )
+                pack_name = f"pack_{self.client.utils.random_text()}_{M.sender.user_id}_{pack_type}_by_{self.client.bot_user_name}"
             else:
                 pack_name = selected_set
-                pack_title = None
 
-            output_path = (
-                input_path.with_suffix(".webm")
-                if is_video
-                else input_path.with_suffix(".webp")
-            )
-
-            if is_video:
-                self.client.utils.video_to_webm(input_path, output_path)
+            if is_native_sticker:
+                output_path = input_path
             else:
-                self.client.utils.image_to_webp(input_path, output_path)
+                output_path = input_path.with_suffix(".webm" if is_video else ".webp")
+                if is_video:
+                    self.client.utils.video_to_webm(input_path, output_path)
+                else:
+                    self.client.utils.image_to_webp(input_path, output_path)
+
+            s_format = StickerFormat.STATIC
+            if is_animated: s_format = StickerFormat.ANIMATED
+            elif is_video: s_format = StickerFormat.VIDEO
 
             sticker = InputSticker(
-                sticker=output_path.open("rb"),
+                sticker=open(output_path, "rb"),
                 emoji_list=[emoji],
-                format=StickerFormat.VIDEO if is_video else StickerFormat.STATIC,
+                format=s_format
             )
 
             try:
-                await self.client.bot.add_sticker_to_set(
-                    user_id=M.sender.user_id,
-                    name=pack_name,
-                    sticker=sticker,
-                )
-            except BadRequest:
-                await self.client.bot.create_new_sticker_set(
-                    user_id=M.sender.user_id,
-                    name=pack_name,
-                    title=pack_title,
-                    stickers=[sticker],
-                    sticker_type="regular",
-                )
+                await self.client.bot.add_sticker_to_set(user_id=M.sender.user_id, name=pack_name, sticker=sticker)
+            except BadRequest as e:
+                if "Sticker set not found" in str(e) or force_new:
+                    await self.client.bot.create_new_sticker_set(
+                        user_id=M.sender.user_id,
+                        name=pack_name,
+                        title=pack_title,
+                        stickers=[sticker],
+                        sticker_type="regular"
+                    )
+                else: raise e
 
-            self.client.db.add_sticker_sets(
-                pack_name=pack_name,
-                pack_title=pack_title,
-                format=pack_type,
-                creator_user_id=M.sender.user_id,
-            )
-
+            self.client.db.add_sticker_sets(pack_name=pack_name, pack_title=pack_title, format=pack_type, creator_user_id=M.sender.user_id)
+            
             sticker_set = await self.client.bot.get_sticker_set(pack_name)
-
-            await self.client.bot.delete_message(
-                chat_id=M.chat_id,
-                message_id=loading.message_id,
-            )
-
-            await self.client.bot.send_sticker(
-                chat_id=M.chat_id,
-                sticker=sticker_set.stickers[-1].file_id,
-                reply_to_message_id=origin_msg_id,
-            )
+            await self.client.bot.delete_message(M.chat_id, loading.message_id)
+            await self.client.bot.send_sticker(M.chat_id, sticker_set.stickers[-1].file_id, reply_to_message_id=origin_msg_id)
 
         finally:
-            try:
-                if input_path:
-                    input_path.unlink(missing_ok=True)
-                if output_path:
-                    output_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+            if input_path and input_path.exists(): input_path.unlink()
+            if output_path and output_path.exists() and output_path != input_path: output_path.unlink()

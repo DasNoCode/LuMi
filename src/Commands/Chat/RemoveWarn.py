@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "removewarn",
                 "aliases": ["unwarn"],
-                "category": "moderation",
+                "category": "Chat",
                 "description": {
                     "content": "Remove warnings from a user.",
                     "usage": "<reply | @user> [all]",

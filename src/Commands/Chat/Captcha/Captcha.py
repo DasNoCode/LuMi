@@ -18,8 +18,9 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "captcha",
-                "category": "chat",
+                "category": "Chat",
                 "OnlyChat": True,
+                "visible": False
             },
         )
 

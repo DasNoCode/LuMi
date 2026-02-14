@@ -5,6 +5,7 @@ import random
 import base64
 import string
 import subprocess
+import traceback
 import imgbbpy
 import requests
 from pathlib import Path
@@ -51,7 +52,7 @@ class Utils:
     ) -> str:
         return (
             "https://vacefron.nl/api/rankcard"
-            f"?username=@{user_name}"
+            f"?username={user_name}"
             f"&avatar={avatar_url}"
             f"&level={level}"
             f"&rank="
@@ -401,3 +402,28 @@ class Utils:
         random.shuffle(options)
         return options
     
+    @staticmethod
+    def format_execution_error(
+        e: Exception,
+        file_filter: Optional[str] = None,
+    ) -> str:
+        tb = traceback.extract_tb(e.__traceback__)
+    
+        if not tb:
+            return (
+                "『<i>Execution Error</i>』\n"
+                f"└ <i>Error</i>: <code>{e}"
+            )
+    
+        if file_filter:
+            local_frames = [f for f in tb if f.filename == file_filter]
+            frame = local_frames[-1] if local_frames else tb[-1]
+        else:
+            frame = tb[-1]
+    
+        return (
+            "『<i>Execution Error</i>』 ❌\n"
+            f"├ <i>File</i>: {os.path.basename(frame.filename)}\n"
+            f"├ <i>Line</i>: {frame.lineno}\n"
+            f"└ <i>Error</i>: {e}"
+        )

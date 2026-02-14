@@ -52,7 +52,7 @@ class Command(BaseCommand):
             return
 
         username: str = user.user_name or user.user_full_name or "User"
-        avatar_url: str = await self.client.profile_photo_url(user.user_id)
+        avatar_url: str = await self.client.db.profile_to_url(user.user_id)
 
         color: str = flags.get("color", "#ffcc99")
         timestamp: str = datetime.now(timezone.utc).isoformat(timespec="seconds")

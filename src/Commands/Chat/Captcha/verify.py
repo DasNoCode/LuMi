@@ -20,8 +20,9 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "verify",
-                "category": "chat",
+                "category": "Chat",
                 "OnlyChat": True,
+                "visible": False
             },
         )
 

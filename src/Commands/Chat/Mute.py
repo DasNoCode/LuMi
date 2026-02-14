@@ -20,7 +20,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "mute",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Mute one or more users in the chat.",
                     "usage": "<@mention> or <reply> [time:<minutes>]",

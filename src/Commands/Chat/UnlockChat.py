@@ -18,7 +18,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "unlock",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Unlock the chat (restore previous permissions).",
                     "usage": "",

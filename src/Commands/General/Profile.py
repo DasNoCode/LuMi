@@ -45,7 +45,7 @@ class Command(BaseCommand):
             chat = await self.client.bot.get_chat(chat_id=user.user_id)
             user_bio: str = chat.bio or "N/A"
     
-            avatar_url: str | None = await self.client.profile_photo_url(
+            avatar_url: str | None = await self.client.db.profile_to_url(
                 user_id=user.user_id
             )
     

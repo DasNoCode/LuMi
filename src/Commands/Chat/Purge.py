@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "purge",
                 "aliases": ["clear", "clean"],
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Delete recent messages from the chat.",
                     "usage": "[count]",

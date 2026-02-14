@@ -17,7 +17,7 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "lock",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Lock the chat (mute everyone).",
                     "usage": "<@mention> or <reply> [time:<minutes>]",

@@ -21,7 +21,7 @@ class Command(BaseCommand):
             {
                 "command": "setchatpfp",
                 "aliases": ["setpfp", "setgpic"],
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Set a new chat profile photo (reply to an image or send it with caption).",
                     "usage": "<reply to a photo or send with caption>",

@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "tagall",
                 "aliases": ["all"],
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Silently tag all chat members. Limit 190 per batch.",
                 },

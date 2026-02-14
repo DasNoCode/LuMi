@@ -63,7 +63,7 @@ class EventHandler:
             )
 
         if text:
-            msg = await self._client.bot.send_message(
+            await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text,
                 parse_mode=ParseMode.HTML,

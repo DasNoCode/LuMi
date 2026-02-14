@@ -18,7 +18,7 @@ class Command(BaseCommand):
             {
                 "command": "warninfo",
                 "aliases": ["warns"],
-                "category": "moderation",
+                "category": "Chat",
                 "description": {
                     "content": "Show warned users in this chat.",
                     "usage": "<reply | @user>",

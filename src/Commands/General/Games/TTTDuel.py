@@ -21,8 +21,9 @@ class Command(BaseCommand):
             client,
             handler,
             {
-                "command": "ttt",
-                "category": "games",
+                "command": "tttduel",
+                "aliases": ["ttt"],
+                "category": "Game",
                 "description": {
                     "content": "Play Tic Tac Toe.",
                     "usage": "<reply | @user>",

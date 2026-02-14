@@ -15,13 +15,12 @@ class Command(BaseCommand):
             handler,
             {
                 "command": "afk",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": (
                         "Set yourself as AFK (Away From Keyboard). "
-                        "Mentions will auto-reply that you're unavailable "
-                        "and notify you when you're mentioned."
                     ),
+                    "usage": "/afk [reason]",
                 },
                 "OnlyChat": True,
             },

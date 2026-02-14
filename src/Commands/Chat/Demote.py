@@ -1,7 +1,9 @@
 from __future__ import annotations
-import traceback
-from Libs import BaseCommand
+
 from typing import Any, TYPE_CHECKING
+
+from telegram import ChatAdministratorRights
+from Libs import BaseCommand
 
 
 if TYPE_CHECKING:
@@ -11,13 +13,14 @@ if TYPE_CHECKING:
 
 
 class Command(BaseCommand):
+
     def __init__(self, client: SuperClient, handler: CommandHandler) -> None:
         super().__init__(
             client,
             handler,
             {
                 "command": "demote",
-                "category": "chat",
+                "category": "Chat",
                 "description": {
                     "content": "Demote one or more admins to regular users.",
                     "usage": "<@mention> or <reply>",
@@ -38,12 +41,14 @@ class Command(BaseCommand):
                 users.extend(M.mentions)
 
             if not users:
+                text: str = (
+                    "『<i>Invalid Usage</i>』❗\n"
+                    "└ <i>Action</i>: Mention or reply to a user"
+                )
+
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text=(
-                        "❗ <b>『Invalid Usage』</b>\n"
-                        "└ <i>Mention at least one user or reply to a message.</i>"
-                    ),
+                    text=text,
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
@@ -52,42 +57,47 @@ class Command(BaseCommand):
             for user in users:
 
                 if user.user_id == M.sender.user_id:
+                    text = (
+                        "『<i>Action Denied</i>』❌\n"
+                        "└ <i>Reason</i>: You cannot demote yourself"
+                    )
+
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text=(
-                            "❌ <b>『Action Denied』</b>\n"
-                            "└ <i>You cannot demote yourself.</i>"
-                        ),
+                        text=text,
                         reply_to_message_id=M.message_id,
                         parse_mode="HTML",
                     )
                     continue
 
                 member = await self.client.bot.get_chat_member(
-                    M.chat_id,
-                    user.user_id,
+                    chat_id=M.chat_id,
+                    user_id=user.user_id,
                 )
 
                 if member.status == "creator":
+                    text = (
+                        "『<i>Action Denied</i>』❌\n"
+                        f"└ <i>Reason</i>: Cannot demote group owner"
+                    )
+
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text=(
-                            "❌ <b>『Action Denied』</b>\n"
-                            f"└ <i>Cannot demote group owner: "
-                            f"{user.user_full_name}</i>"
-                        ),
+                        text=text,
                         reply_to_message_id=M.message_id,
                         parse_mode="HTML",
                     )
                     continue
 
-                if user.user_id == M.bot_user_id:
+                if user.user_id == self.client.bot_user_id:
+                    text = (
+                        "『<i>Action Denied</i>』❌\n"
+                        "└ <i>Reason</i>: I cannot demote myself"
+                    )
+
                     await self.client.bot.send_message(
                         chat_id=M.chat_id,
-                        text=(
-                            "❌ <b>『Action Denied』</b>\n"
-                            "└ <i>I cannot demote myself.</i>"
-                        ),
+                        text=text,
                         reply_to_message_id=M.message_id,
                         parse_mode="HTML",
                     )
@@ -96,25 +106,18 @@ class Command(BaseCommand):
                 await self.client.bot.promote_chat_member(
                     chat_id=M.chat_id,
                     user_id=user.user_id,
-                    can_change_info=False,
-                    can_post_messages=False,
-                    can_edit_messages=False,
-                    can_delete_messages=False,
-                    can_invite_users=False,
-                    can_restrict_members=False,
-                    can_pin_messages=False,
-                    can_promote_members=False,
-                    is_anonymous=False,
+                    **ChatAdministratorRights.no_rights().to_dict(),
+                )
+
+                text = (
+                    "『<i>User Demoted</i>』📉\n"
+                    f"├ <i>User</i>: {user.mention}\n"
+                    "└ <i>Status</i>: Regular Member"
                 )
 
                 await self.client.bot.send_message(
                     chat_id=M.chat_id,
-                    text=(
-                        "✅ <b>『User Demoted』</b>\n"
-                        f"├ <b>User:</b> "
-                        f"{user.user_full_name or user.user_name}\n"
-                        f"└ <b>ID:</b> <code>{user.user_id}</code>"
-                    ),
+                    text=text,
                     reply_to_message_id=M.message_id,
                     parse_mode="HTML",
                 )
@@ -124,12 +127,14 @@ class Command(BaseCommand):
                 f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
             )
 
+            text = (
+                "『<i>Error</i>』⚠️\n"
+                "└ <i>Action</i>: Please try again later"
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "⚠️ <b>『Error』</b>\n"
-                    "└ <i>Something went wrong. Please try again later.</i>"
-                ),
+                text=text,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )

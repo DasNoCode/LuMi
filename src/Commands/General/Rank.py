@@ -64,7 +64,7 @@ class Command(BaseCommand):
                 )
 
                 avatar_url: str | None = (
-                    await self.client.profile_photo_url(
+                    await self.client.db.profile_to_url(
                         user_id=user.user_id
                     )
                 )

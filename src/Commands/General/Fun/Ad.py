@@ -40,7 +40,7 @@ class Command(BaseCommand):
                 or (M.mentions[0] if M.mentions else None)
                 or M.sender
             )
-            image_url = await self.client.profile_photo_url(user.user_id)
+            image_url = await self.client.db.profile_to_url(user.user_id)
 
         ad_url: str = (
             "https://api.popcat.xyz/v2/ad"
