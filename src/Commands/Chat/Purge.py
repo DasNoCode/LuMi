@@ -50,8 +50,14 @@ class Command(BaseCommand):
                     chat_id=M.chat_id,
                     message_ids=chunk,
                 )
-            except BadRequest:
-                pass
+            except BadRequest as e:
+                error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
+                await self.client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=error,
+                    reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
+                )
 
         try:
             confirm = await self.client.bot.send_message(
@@ -67,5 +73,11 @@ class Command(BaseCommand):
                 chat_id=M.chat_id,
                 message_id=confirm.message_id,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=error,
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
+            )

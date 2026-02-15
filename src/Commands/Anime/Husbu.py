@@ -65,17 +65,14 @@ class Command(BaseCommand):
                 parse_mode="HTML",
             )
     
-        except Exception:
+        except Exception as e:
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "⚠️ <b>『Error』</b>\n"
-                    "└ <i>Failed to fetch husbando image.</i>"
-                ),
+                text=error,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR]\n{traceback.format_exc()}")
 
 
 

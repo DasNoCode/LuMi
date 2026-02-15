@@ -33,6 +33,12 @@ class User(MongoModel):
         blank=True,
         default=None,
     )
+    
+    github: str | None = fields.CharField(
+        required=False,
+        blank=True,
+        default=None,
+    )
 
     created_at: datetime = fields.DateTimeField(
         required=True,

@@ -33,18 +33,24 @@ class Command(BaseCommand):
             message_id=M.message_id,
         )
 
+        flags: Dict[str, Any] = context.get("flags", {})
+        user_id: int = int(flags.get("user_id", 0))
+        
+        key: Tuple[str, int, int] = ("captcha", M.chat_id, user_id)
+        
+        captcha_data: Dict[str, Any] | None = self.client.interaction_store.get(key)
+        if not captcha_data:
+            return
+        self.client.interaction_store.pop(key, None)
+        
         loading = await self.client.bot.send_message(
             chat_id=M.chat_id,
             text="🔑",
         )
 
-        flags: Dict[str, Any] = context.get("flags", {})
-        user_id: int = int(flags.get("user_id", 0))
-
         if not user_id:
             return
 
-        key: Tuple[str, int, int] = ("captcha", M.chat_id, user_id)
         existing: Dict[str, Any] | None = self.client.interaction_store.get(key)
 
         captcha_code: str = self.client.utils.random_text()

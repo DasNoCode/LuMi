@@ -154,8 +154,8 @@ class Database:
             chat_id,
             {"whos_that_pokemon": enabled},
         )
-    # ---User DB functions---
 
+    # ---User DB functions---
     def _update_or_create_user(self, user_id: int, updates: Dict[str, Any]) -> None:
         try:
             user = User.objects.raw({"user_id": str(user_id)}).first()
@@ -222,12 +222,19 @@ class Database:
         except DoesNotExist:
             self._update_or_create_user(user_id, {"xp": xp})
 
-    def set_user_profile_photo(
+    def set_user_profile_url(
         self,
         user_id: int,
         photo_url: Optional[str],
     ) -> None:
         self._update_or_create_user(user_id, {"profile_photo_url": photo_url})
+
+    def set_github(
+        self,
+        user_id: int,
+        github: str,
+    ) -> None:
+        self._update_or_create_user(user_id, {"github": github})
 
     async def profile_to_url (self, user_id: int) -> str:
         default_path: str = "src/Assets/image.png"
@@ -241,7 +248,7 @@ class Database:
         photo_id: Optional[str] = await self._client.get_profile_id(user_id)
         if not photo_id:
             avatar_url = self._client.utils.img_to_url(default_path)
-            self.set_user_profile_photo(user_id, avatar_url)
+            self.set_user_profile_url(user_id, avatar_url)
             return avatar_url
     
         photo_path: str = await self._client.download_media(photo_id)
@@ -252,7 +259,7 @@ class Database:
         except Exception:
             pass
     
-        self.set_user_profile_photo(user_id, avatar_url)
+        self.set_user_profile_url(user_id, avatar_url)
         return avatar_url
 
     # ---Bot DB functions 

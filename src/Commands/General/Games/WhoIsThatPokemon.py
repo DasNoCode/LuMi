@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import random
 import time
 from typing import Any, TYPE_CHECKING, Tuple
 
@@ -87,7 +88,10 @@ class Command(BaseCommand):
                 "『<i>Wrong Guess</i>』❌\n"
                 "└ <i>Action</i>: Try again before time runs out"
             )
-
+            db_user = self.client.db.get_user_by_user_id(M.sender.user_id)
+            current_xp: int = db_user.xp if db_user else 0
+            xp: int = 0 if current_xp == 0 else (random.randint(1, 3) - db_user.xp)
+            self.client.db.add_xp(user_id=M.sender.user_id, xp=xp)
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
                 text=text,
@@ -120,3 +124,4 @@ class Command(BaseCommand):
             parse_mode="HTML",
             reply_to_message_id=M.message_id,
         )
+        self.client.db.add_xp(user_id=M.sender.user_id, xp=random.randint(1, 3))

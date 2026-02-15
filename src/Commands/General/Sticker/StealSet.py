@@ -126,10 +126,10 @@ class Command(BaseCommand):
             self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")
         
         except Exception as e:
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ Failed to clone sticker pack due to an unexpected error.",
+                text=error,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {context.cmd}: {tb.lineno} | {e}")

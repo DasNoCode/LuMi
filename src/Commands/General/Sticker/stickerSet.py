@@ -42,10 +42,10 @@ class Command(BaseCommand):
             store = self.client.interaction_store.get(store_key)
             if not store:
                 text = (
-                    "『<i>Session Expired</i>』⏳\n"
-                    "└ <i>Status</i>: Please start again"
+                    "『Session Expired』⏳\n"
+                    "└ Status: Please start again"
                 )
-                return await self.client.bot.answer_callback_query(chat_id=M.callback_id, text=text, show_alert=True)
+                return await self.client.bot.answer_callback_query(callback_query_id=M.callback_id, text=text, show_alert=True)
 
             selected_set = flags.get("set")
             force_new = flags.get("new") == "true"
@@ -56,11 +56,11 @@ class Command(BaseCommand):
                     is_video_pack = target_pack["format"] == "video"
                     if is_video_pack != store["is_video"]:
                         text = (
-                            "『<i>Format Mismatch</i>』❌\n"
-                            "└ <i>Status</i>: Format Mismatch!"
+                            "『Format Mismatch』❌\n"
+                            "└ Status: Format Mismatch!"
                         )
                         return await self.client.bot.answer_callback_query(
-                            chtat_id=M.callback_id, text=text, show_alert=True
+                            callback_query_id=M.callback_id, text=text, show_alert=True
                         )
 
             file_id = store["file_id"]
@@ -68,7 +68,13 @@ class Command(BaseCommand):
             is_native_sticker = store["is_native"]
             is_animated = store.get("is_animated", False) 
             emoji = store["emoji"]
-            pack_title = store["title"] or f"{M.sender.user_full_name}'s Pack"
+            title = store["title"] or f"{M.sender.user_full_name}'s Pack"
+            existing = {s["pack_title"] for s in (user_sets or [])}
+            i = 0
+            pack_title = title
+            while pack_title in existing:
+                i += 1
+                pack_title = f"{title} ({i})"
             origin_msg_id = store["origin_msg_id"]
 
             try: await self.client.bot.delete_message(chat_id=M.chat_id, message_id=M.message_id)

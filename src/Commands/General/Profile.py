@@ -41,6 +41,7 @@ class Command(BaseCommand):
         for user in users:
             db_user = self.client.db.get_user_by_user_id(user.user_id)
             xp: int = db_user.xp if db_user else 0
+            github: str = db_user.github if db_user else "N/A"
     
             chat = await self.client.bot.get_chat(chat_id=user.user_id)
             user_bio: str = chat.bio or "N/A"
@@ -55,7 +56,12 @@ class Command(BaseCommand):
                 f"├ <i>Name</i>: {user.user_full_name}\n"
                 f"├ <i>User ID</i>: <code>{user.user_id}</code>\n"
                 f"├ <i>Username</i>: {user.mention}\n"
-                f"├ <i>XP</i>: {xp}\n"
+                + (
+                    f"├ <i>GitHub</i>: "
+                    f'<a href="https://github.com/{github}">{github}</a>\n'
+                    if github else ""
+                )
+                + f"├ <i>XP</i>: {xp}\n"
                 f"└ <i>Bio</i>: {user_bio}"
             )
     

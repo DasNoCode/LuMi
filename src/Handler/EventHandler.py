@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import traceback
-from typing import Any
+import asyncio
+from typing import Any, Tuple
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.constants import ParseMode
 
@@ -14,7 +14,6 @@ class EventHandler:
         if not M.is_event:
             return
 
-        # Bot added to group
         if (
             M.event_type == "join"
             and M.event_user.user_id == self._client.bot_user_id
@@ -77,18 +76,20 @@ class EventHandler:
                 ChatPermissions.no_permissions(),
             )
         except Exception as e:
-            self._client.log.error(
-                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
-            )
+            self._client.log.error(f"[ERROR] {e}")
+
+        key: Tuple[str, int, int] = ("captcha", M.chat_id, M.event_user.user_id)
+        self._client.interaction_store[key] = {
+            "attempt": 1,
+            "status": "pending_init"
+        }
 
         keyboard = InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
                         "『Verify Captcha』",
-                        callback_data=(
-                            f"cmd:captcha user_id:{M.event_user.user_id}"
-                        ),
+                        callback_data=f"cmd:captcha user_id:{M.event_user.user_id}",
                     )
                 ]
             ]
@@ -97,37 +98,35 @@ class EventHandler:
         text: str = (
             "『<i>Verification Required</i>』🔐\n"
             f"├ <i>User</i>: {M.event_user.mention}\n"
-            "└ <i>Action</i>: Please verify to start chatting."
+            "└ <i>Action</i>: Please verify within 3 minutes to stay."
         )
 
-        await self._client.bot.send_message(
+        sent_msg = await self._client.bot.send_message(
             chat_id=M.chat_id,
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
         )
 
-    async def _bot_joined_group(self, chat_id: int) -> None:
-        role, _ = await self._client.get_user_permissions(
-            chat_id=chat_id,
-            user_id=self._client.bot_user_id,
-        )
-        
-        requirement_line: str = (
-            "├ <i>Requirement</i>: Promote me to Admin\n"
-            if role not in ("administrator", "creator")
-            else ""
-        )
-        
-        text: str = (
-            "『<i>Introduction</i>』🤖\n"
-            f"├ <i>Name</i>: {self._client.bot_name}\n"
-            f"{requirement_line}"
-            f"└ <i>Help</i>: Use {self._client.prefix}help"
+        asyncio.create_task(
+            self._expire_join_captcha(
+                chat_id=M.chat_id,
+                message_id=sent_msg.message_id,
+                user_id=M.event_user.user_id
+            )
         )
 
-        await self._client.bot.send_message(
-            chat_id=chat_id,
-            text=text,
-            parse_mode=ParseMode.HTML,
-        )
+    async def _expire_join_captcha(self, chat_id: int, message_id: int, user_id: int) -> None:
+        await asyncio.sleep(180)
+
+        key: Tuple[str, int, int] = ("captcha", chat_id, user_id)
+        data = self._client.interaction_store.get(key)
+
+        if data and data.get("status") == "pending_init":
+            self._client.interaction_store.pop(key, None)
+            
+            try:
+                await self._client.kick_chat_member(chat_id=chat_id, user_id=user_id)
+                await self._client.bot.delete_message(chat_id, message_id)
+            except Exception:
+                pass

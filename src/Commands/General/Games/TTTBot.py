@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import numpy as np
 from typing import Any, TYPE_CHECKING, Tuple, Optional
 
@@ -52,13 +53,13 @@ class Command(BaseCommand):
             [
                 [
                     InlineKeyboardButton(
-                        "1 Round", callback_data="cmd:tttbot rounds:1"
+                        "『1』 ", callback_data="cmd:tttbot rounds:1"
                     ),
                     InlineKeyboardButton(
-                        "2 Rounds", callback_data="cmd:tttbot rounds:2"
+                        "『2』", callback_data="cmd:tttbot rounds:2"
                     ),
                     InlineKeyboardButton(
-                        "3 Rounds", callback_data="cmd:tttbot rounds:3"
+                        "『3』", callback_data="cmd:tttbot rounds:3"
                     ),
                 ]
             ]
@@ -66,7 +67,7 @@ class Command(BaseCommand):
 
         await self.client.bot.send_message(
             chat_id=M.chat_id,
-            text="🎮 <b>『Select Rounds』</b>",
+            text="『<i>Select Rounds</i>』 🎮 ",
             parse_mode="HTML",
             reply_markup=keyboard,
             reply_to_message_id=M.message_id,
@@ -127,9 +128,13 @@ class Command(BaseCommand):
         r, c = int(flags["r"]), int(flags["c"])
 
         if game["board"][r][c] != 0:
+            text = (
+                "『Invalid Move』 ❌\n"
+                "└ Position already occupied"
+            )
             await self.client.bot.answer_callback_query(
                 callback_query_id=M.callback_id,
-                text="❌ Position already occupied.",
+                text=text,
                 show_alert=True,
             )
             return
@@ -211,13 +216,13 @@ class Command(BaseCommand):
             buttons.append(row)
 
         buttons.append(
-            [InlineKeyboardButton("🏳 Defeated", callback_data="cmd:tttbot defeat:true")]
+            [InlineKeyboardButton("『Defeated』", callback_data="cmd:tttbot defeat:true")]
         )
 
         text = (
-            "🎮 <b>『Tic Tac Toe vs Bot』</b>\n"
-            f"├ Round: {game['current_round']}/{game['rounds']}\n"
-            f"├ Score: You {game['score_user']} - {game['score_bot']} Bot\n"
+            "『<i>Tic Tac Toe vs Bot</i>』 🎮 \n"
+            f"├ <i>Round</i>: {game['current_round']}/{game['rounds']}\n"
+            f"├ <i>Score</i>: You {game['score_user']} - {game['score_bot']} Bot\n"
             "└ You are ⭕ | Bot is ❌"
         )
 
@@ -247,18 +252,45 @@ class Command(BaseCommand):
         game["turn_task"] = asyncio.create_task(expire())
 
     async def _finish_game(self, key: Tuple[Any, ...], defeated: bool = False) -> None:
-
         game = self.client.interaction_store.get(key)
         if not game:
             return
-
+    
+        player_id: int = game["player"]
+        db_user = self.client.db.get_user_by_user_id(player_id)
+        current_xp: int = db_user.xp if db_user else 0
+    
+        xp_change: int = 0
+    
         if defeated:
-            result = "🏳 <b>You surrendered. Bot wins.</b>"
-        else:
+            loss: int = min(random.randint(1, 3), current_xp)
+            if loss > 0:
+                self.client.db.add_xp(user_id=player_id, xp=-loss)
+            xp_change = -loss
+    
             result = (
-                "🏆 <b>『Final Result』</b>\n"
-                f"├ You: {game['score_user']}\n"
-                f"└ Bot: {game['score_bot']}"
+                "『<i>Surrender</i>』 🏳 \n"
+                f"└ You lost {loss} XP"
+            )
+    
+        else:
+            is_player_winner: bool = game["score_user"] > game["score_bot"]
+    
+            if is_player_winner:
+                gain: int = random.randint(1, 3)
+                self.client.db.add_xp(user_id=player_id, xp=gain)
+                xp_change = gain
+            else:
+                loss: int = min(random.randint(1, 3), current_xp)
+                if loss > 0:
+                    self.client.db.add_xp(user_id=player_id, xp=-loss)
+                xp_change = -loss
+    
+            result = (
+                "『<i>Final Result</i>』 🏆 \n"
+                f"├ <i>You</i>: {game['score_user']}\n"
+                f"├ <i>Bot</i>: {game['score_bot']}\n"
+                f"└ <i>XP</i>: {'+' if xp_change > 0 else ''}{xp_change}"
             )
 
         await self.client.bot.edit_message_text(

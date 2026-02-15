@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 from typing import Any, TYPE_CHECKING
 from Libs import BaseCommand
 
-
 if TYPE_CHECKING:
+    from Models import User
     from Libs import SuperClient, Message
     from Handler import CommandHandler
 
 
 class Command(BaseCommand):
+
     def __init__(self, client: SuperClient, handler: CommandHandler) -> None:
         super().__init__(
             client,
@@ -17,9 +19,7 @@ class Command(BaseCommand):
                 "command": "afk",
                 "category": "Chat",
                 "description": {
-                    "content": (
-                        "Set yourself as AFK (Away From Keyboard). "
-                    ),
+                    "content": "Set yourself as AFK (Away From Keyboard).",
                     "usage": "/afk [reason]",
                 },
                 "OnlyChat": True,
@@ -28,12 +28,29 @@ class Command(BaseCommand):
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
         try:
+
+            sender_db: User = self.client.db.get_user_by_user_id(
+                M.sender.user_id
+            )
+
+            if sender_db and sender_db.afk.get("status"):
+                await self.client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=(
+                        "『<i>AFK Status</i>』💤\n"
+                        "└ <i>Status</i>: You are already AFK"
+                    ),
+                    reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
+                )
+                return
+
             raw_text: str = context.get("text", "").strip()
 
             reason: str = " ".join(
                 word for word in raw_text.split()
                 if not word.startswith("@")
-            )
+            ).strip()
 
             self.client.db.set_user_afk(
                 user_id=M.sender.user_id,
@@ -59,18 +76,5 @@ class Command(BaseCommand):
             )
 
         except Exception as e:
-            self.client.log.error(
-                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
-            )
-
-            error_text: str = (
-                "『<i>Error</i>』⚠️\n"
-                "└ <i>Status</i>: Something went wrong"
-            )
-
-            await self.client.bot.send_message(
-                chat_id=M.chat_id,
-                text=error_text,
-                reply_to_message_id=M.message_id,
-                parse_mode="HTML",
-            )
+            error: str = self.client.utils.format_execution_error(e=e, file_filter=__file__)
+            await self.client.bot.send_message(chat_id=M.chat_id, text=error, reply_to_message_id=M.message_id, parse_mode="HTML",)

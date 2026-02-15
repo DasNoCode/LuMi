@@ -1,14 +1,10 @@
 from __future__ import annotations
-import asyncio
 import traceback
-import time
-from datetime import datetime
+import re
 import os
 import importlib.util
-from typing import List, Dict, Any, TYPE_CHECKING
-from httpx import NetworkError
-import telegram
-import random
+from datetime import datetime
+from typing import Dict, Any, TYPE_CHECKING
 from Helpers import JsonObject, get_rank
 
 if TYPE_CHECKING:
@@ -17,325 +13,260 @@ if TYPE_CHECKING:
 
 
 class CommandHandler:
-    def __init__(self, client: SuperClient) -> None:
+    FLAG_PATTERN = re.compile(r"(\w+):([\w\-/]+|'[^']+'|\"[^\"]+\")")
 
+    def __init__(self, client: SuperClient) -> None:
         self._client: SuperClient = client
         self._commands: Dict[str, BaseCommand] = {}
+        self._aliases_map: Dict[str, str] = {}
 
-    #--- 🔍 Argument Parser ---
     def _parse_args(self, raw: str) -> Dict[str, Any]:
-        parts: List[str] = raw.split(" ")
-        cmd: str = ""
-        if parts:
-            first: str = parts[0]
-        
-            if first.startswith(self._client.config.prefix):
-                cmd = parts.pop(0)[len(self._client.config.prefix):].lower()
-            elif first.startswith("cmd:"):
-                cmd = parts.pop(0)[4:].lower()
-        text: str = " ".join(parts)
-        flags: Dict[str, str] = {}
-    
-        i: int = 0
-        while i < len(parts):
-            part: str = parts[i]
-    
-            if ":" in part and not part.startswith(":"):
-                key, value = part.split(":", 1)
-                i += 1
-    
-                while i < len(parts) and ":" not in parts[i]:
-                    value += f" {parts[i]}"
-                    i += 1
-    
-                flags[key] = value
-            else:
-                i += 1
-    
+        parts = raw.split()
+        if not parts:
+            return {"cmd": "", "text": "", "flags": {}, "raw": raw}
+
+        prefix = self._client.config.prefix
+        first = parts[0].lower()
+
+        if first.startswith(prefix):
+            cmd_name = first[len(prefix) :]
+        elif first.startswith("cmd:"):
+            cmd_name = first[4:]
+        else:
+            cmd_name = ""
+
+        text_content = " ".join(parts[1:]) if cmd_name else raw
+        flags = {
+            m.group(1): m.group(2).strip("'\"")
+            for m in self.FLAG_PATTERN.finditer(text_content)
+        }
+        clean_text = self.FLAG_PATTERN.sub("", text_content).strip()
+
         return {
-            "cmd": cmd,
-            "text": text,
+            "cmd": cmd_name,
+            "text": clean_text,
             "flags": flags,
             "raw": raw,
         }
-        
-    # --- Command Loader ---
+
     def load_commands(self, folder_path: str) -> None:
-        self._client.log.info("Loading commands...")
-        all_files: list[str] = self._client.utils.readdir_recursive(folder_path)
-    
+        self._client.log.info("🚀 Loading commands...")
+        all_files = self._client.utils.readdir_recursive(folder_path)
+
         for file_path in all_files:
-            if not file_path.endswith(".py") or os.path.basename(file_path).startswith("_"):
+            if not file_path.endswith(".py") or os.path.basename(file_path).startswith(
+                "_"
+            ):
                 continue
-    
             try:
-                module_name: str = os.path.splitext(os.path.basename(file_path))[0]
+                module_name = os.path.splitext(os.path.basename(file_path))[0]
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 if not spec or not spec.loader:
                     continue
-    
+
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
-    
+
                 CommandClass = getattr(module, "Command", None)
-                if CommandClass is None:
-                    continue 
-    
-                instance: BaseCommand = CommandClass(self._client, self)
-                self._commands[instance.config.command] = instance
-    
-                category: str = instance.config.get("category", "Uncategorized")
-                self._client.log.info(
-                    f"✅ Loaded: {instance.config.command} from {category}"
-                )
-    
+                if not CommandClass:
+                    continue
+
+                inst: BaseCommand = CommandClass(self._client, self)
+                cmd_name = inst.config.command.lower()
+
+                self._commands[cmd_name] = inst
+                for alias in getattr(inst.config, "aliases", []):
+                    self._aliases_map[alias.lower()] = cmd_name
+
+                self._client.log.info(f"✅ Loaded: {cmd_name}")
             except Exception as e:
-                self._client.log.error(f"[ERROR] Failed to load {file_path}: {e}")
-    
-        self._client.log.info(f"✅ Successfully loaded {len(self._commands)} commands.")
+                self._client.log.error(f"❌ Failed to load {file_path}: {e}")
 
-
-    # --- Main Handler ---
     async def handler(self, M: Message) -> None:
-        is_command: bool
-        raw = M.message
-        if getattr(M, "is_callback", False):
-            is_command = True
-        else:
-            is_command = raw.startswith(self._client.config.prefix)
-        context: JsonObject = JsonObject(self._parse_args(raw))
-        msg_type: str = "CMD" if is_command else "MSG"
+        raw_msg = M.message
         chat_name: str = M.chat_title if M.chat_type == "supergroup" else "private"
-        timestamp: int = datetime.now()
-        get_user = lambda uid: self._client.db.get_user_by_user_id(
-            uid or M.sender.user_id
-        )
-        sender: User = get_user(M.sender.user_id)
-        
-        # --- AFK Check ---
-        if sender.afk["status"]:
-            if M.message[1:] == "afk":
-                return
-        
-            now_ts: int = int(timestamp.timestamp())
-            afk_duration: int = (int(now_ts - sender.afk["duration"]))
-            user_name: str = (
-                M.sender.mention
-                or M.sender.user_full_name
-                or "User"
-            )
-        
-            text: str = (
-                f"@{user_name} "
-                f"{random.choice(['re-active', 'returned', 'came back', 're-appeared'])} "
-                f"after {self._client.utils.format_duration(afk_duration)}!"
-            )
-        
-            msgs: list[int] = sender.afk.get("mentioned_msgs", [])
-            if msgs:
-                chat_id = str(M.chat_id).replace("-100", "", 1)
-                text += "\n\nTagged messages:\n"
-                text += "\n".join(
-                    f"{i}. https://t.me/c/{chat_id}/{msg}"
-                    for i, msg in enumerate(msgs, 1)
-                )
-        
-            await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text=text,
-                reply_to_message_id=M.message_id,
-            )
-            # --- Disable AFK ---
-            self._client.db.set_user_afk(user_id=M.sender.user_id, status=False)
+        if not raw_msg and not M.is_callback:
+            return
 
-        # --- Command or Message Logging ---
-        if is_command:
+        is_cmd = M.is_callback or raw_msg.startswith(self._client.config.prefix)
+        msg_type: str = "CMD" if is_cmd else "MSG"
+        context = JsonObject(self._parse_args(raw_msg))
+
+        sender_db: User = self._client.db.get_user_by_user_id(M.sender.user_id)
+
+        if sender_db.afk.get("status") and context.cmd != "afk":
+            await self._handle_afk_return(M, sender_db)
+
+        await self._check_mentioned_afk(M)
+
+        if is_cmd:
             self._client.log.info(
                 f"[{msg_type}] {self._client.config.prefix}{context.cmd} from "
-                f"{M.sender.mention} in {chat_name} at {timestamp.date()}"
+                f"{M.sender.mention} in {chat_name}"
             )
         else:
             return self._client.log.info(
-                f"[{msg_type}] from {M.sender.mention} in {chat_name} at {timestamp.date()}"
+                f"[{msg_type}] from {M.sender.mention} in {chat_name}"
             )
 
-        # --- Empty Command ---
-        if M.message == self._client.config.prefix:
-            return await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text=f"Please enter a command starting with {self._client.config.prefix}.",
-                reply_to_message_id=M.message_id,
-            )
+        cmd_key = context.cmd.lower()
+        target_name = self._aliases_map.get(cmd_key, cmd_key)
+        cmd_obj = self._commands.get(target_name)
 
-        # --- Command Resolver ---
-        cmd: BaseCommand | None = self._commands.get(context.cmd.lower()) or next(
-            (
-                c
-                for c in self._commands.values()
-                if context.cmd.lower() in getattr(c.config, "aliases", [])
-            ),
-            None,
-        )
-
-        if not cmd:
-            return await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text=f"❌ Unknown command! Use {self._client.config.prefix}help to see all available commands.",
-                reply_to_message_id=M.message_id,
-            )
-
-        # --- Ban Check ---
-        if sender.ban["status"]:
-            banned_at = sender.ban.get("since", None)
-            banned_at_str = (
-                banned_at.strftime("%Y-%m-%d %H:%M:%S (%z)") if banned_at else "Unknown"
-            )
+        if not cmd_obj:
             return await self._client.bot.send_message(
                 chat_id=M.chat_id,
                 text=(
-                    "<blockquote>"
-                    "🚫 <b>Oops! You're banned from using this bot.</b>\n\n"
-                    f"📝 <b>Reason:</b> {sender.ban['reason']}\n"
-                    f"🕒 <b>Banned at:</b> {banned_at_str}\n\n"
-                    "Contact admin if this is a mistake."
-                    "</blockquote>"
+                    "『<i>Unknown Command</i>』 ❌\n"
+                    f"└ Use {self._client.config.prefix}help to see all available commands"
                 ),
-                reply_to_message_id=M.message_id,
-                parse_mode=telegram.constants.ParseMode.HTML,
+                reply_to_message_id=M.message_id,parse_mode="HTML",
             )
 
-        # --- Command Enabled Check ---
-        command_info: dict[str, Any] = self._client.db.get_cmd_info(cmd.config.command)
-        
-        if not command_info.get("enabled", True):
-            reason: str | None = command_info.get("reason")
-        
-            return await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text=(
-                    f"<blockquote>"
-                    f"Command <b>{cmd.config.command}</b> is currently disabled.\n\n"
-                    f"└📝 Reason: {reason or 'No reason provided.'}"
-                    f"</blockquote>"
-                ),
-                parse_mode=telegram.constants.ParseMode.HTML,
-            )
-
-        # --- Chat/Private Command Validation ---
-        if getattr(cmd.config, "OnlyChat", False) and M.chat_type == "private":
-            return await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text="👥 Chat-only command. Try this in a chat.",
-                reply_to_message_id=M.message_id,
-            )
-
-        if getattr(cmd.config, "OnlyChat", True) == "chat":
-            return await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text="💬 Please use this command in private chat only.",
-                reply_to_message_id=M.message_id,
-            )
-
-        # --- Developer-only Command ---
-        if (
-            getattr(cmd.config, "DevOnly", False)
-            and M.Info.Sender.User not in self._client.config.mods
-        ):
-            return await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text="⚠️ Oops! This command is only for developers.",
-                reply_to_message_id=M.message_id,
-            )
-
-        # --- Admin Command Validation ---
-        required_perms: List[str] = getattr(cmd.config, "admin_permissions", [])
-        
-        if getattr(cmd.config, "OnlyAdmin", False):
-            for perm in required_perms:
-                _, perms = await self._client.get_user_permissions(M.chat_id, self._client.bot_user_id)
-                if not perms.get(perm):
-                    text: str = (
-                        "『<i>Permission Required</i>』⚠️\n"
-                        f"└ <i>Missing Permission</i>: {perm}"
-                    )
-                    return await self._client.bot.send_message(
-                        chat_id=M.chat_id,
-                        text=text,
-                        reply_to_message_id=M.message_id,
-                    )
-            role, perms = await self._client.get_user_permissions(M.chat_id, M.sender.user_id)     
-            if str(role) == "administrator":
-                for perm in required_perms:
-                    if not perms.get(perm):
-                        text: str = (
-                            "『<i>Permission Required</i>』⚠️\n"
-                            f"└ <i>Missing Permission</i>: {perm}"
-                        )
-                        return await self._client.bot.send_message(
-                            chat_id=M.chat_id,
-                            text=text,
-                            reply_to_message_id=M.message_id,
-                        )
-            elif str(role) == "member":
-                text: str = (
-                    "『<i>Permission Denied</i>』❌\n"
-                    "└ <i>Access</i>: You do not have permission to run this command."
-                )
-                await self._client.bot.send_message(
-                    chat_id=M.chat_id,
-                    text=text,
-                    parse_mode="HTML",
-                    reply_to_message_id=M.message_id,
-                )
-
-        # --- Execute Command --- 
-        try:
-          await cmd.exec(M, context)
-        except NetworkError as e:
-            tb = traceback.extract_tb(e.__traceback__)[-1]
-            self.client.log.error(f"[ERROR] {tb.filename.split('/')[-1]}: {tb.lineno} | {e}")
-        # --- Mention AFK Users ---
-        users: list[User] = []
-        
-        if M.reply_to_user:
-            users.append(M.reply_to_user)
-        elif M.mentions:
-            users.extend(M.mentions)
-        
-        for mentioned_user in users:
-            mentioned_data: User = get_user(mentioned_user.user_id)
-            afk_info: dict[str, Any] = mentioned_data.afk
-        
-            if not afk_info.get("status"):
-                continue
-        
-            afk_reason: str | None = afk_info.get("reason")
-        
-            self._client.db.set_user_afk(
-                user_id=mentioned_user.user_id,
-                mentioned_msg_id=M.message_id,
+        if sender_db.ban.get("status"):
+            text = (
+                "『<i>Access Restricted</i>』 🚫\n"
+                f"├ Reason: {sender_db.ban.get('reason')}\n"
+                f"├ Banned At: {self._client.utils.format_duration(sender_db.ban.get('since', None))}\n"
+                "└ Contact admin if this is a mistake"
             )
             await self._client.bot.send_message(
-                chat_id=M.chat_id,
-                text=(
-                    f"@{mentioned_user.user_name or mentioned_user.user_full_name} "
-                    "is currently AFK. 💤"
-                    + (f"\nReason: {afk_reason}" if afk_reason else "")
-                ),
-                reply_to_message_id=M.message_id,
+                chat_id=M.chat_id, text=text, reply_to_message_id=M.message_id, parse_mode="HTML",
             )
             return
 
-        # --- XP & Rank System ---
-        if getattr(cmd.config, "xp", None):
-            self._client.db.add_xp(M.sender.user_id, cmd.config.xp)
-            xp: int = sender.xp + cmd.config.xp
-            old_level: Dict[str, Any] = get_rank(sender.xp)
-            new_level: Dict[str, Any] = get_rank(xp)
-            if old_level["level"] != new_level["level"]:
-                rank_cmd: BaseCommand = self._commands.get("rank")
-                if rank_cmd:
-                    await rank_cmd.exec(M, self._parse_args(f" caption:@{M.sender.mention or M.sender.user_full_name} you levelled up 🎉!\n{old_level['level']} -> {new_level['level']}"))
-                
+        cmd_info = self._client.db.get_cmd_info(cmd_obj.config.command)
+        if not cmd_info.get("enabled", True):
+            return await self._client.bot.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    "『<i>Command Disabled</i>』 ⚠️\n"
+                    f"└ {cmd_obj.config.command} is currently disabled"
+                ),
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
+            )
 
+        if not await self._validate_access(M, cmd_obj):
+            return
 
+        try:
+            await cmd_obj.exec(M, context)
+            if getattr(cmd_obj.config, "xp", None):
+                await self._process_xp(M, sender_db, cmd_obj.config.xp)
+        except Exception:
+            self._client.log.error(
+                f"Error in {cmd_obj.config.command}: {traceback.format_exc()}"
+            )
+
+    async def _check_mentioned_afk(self, M: Message):
+        targets = []
+        if M.reply_to_user:
+            targets.append(M.reply_to_user)
+        if M.mentions:
+            targets.extend(M.mentions)
+
+        for user in targets:
+            if user.user_id == M.sender.user_id:
+                continue
+
+            data = self._client.db.get_user_by_user_id(user.user_id)
+            if data.afk.get("status"):
+                self._client.db.set_user_afk(
+                    user_id=user.user_id, mentioned_msg_id=M.message_id
+                )
+                reason = data.afk.get("reason")
+                name = user.mention
+                text = "『<i>User AFK</i>』 💤\n" f"├ User: {name}"
+                if reason:
+                    text += f"\n└ Reason: {reason}"
+                else:
+                    text += "\n└ Reason: Not specified"
+
+                await self._client.bot.send_message(
+                    chat_id=M.chat_id, text=text, reply_to_message_id=M.message_id, parse_mode="HTML",
+                )
+
+    async def _handle_afk_return(self, M: Message, user: User):
+        now = datetime.now().timestamp()
+        duration = self._client.utils.format_duration(int(now - user.afk["duration"]))
+        text = (
+            "『<i>Welcome Back</i>』 👋\n"
+            f"├ User: {M.sender.mention}\n"
+            f"└ Away For: {duration}"
+        )
+        msgs = user.afk.get("mentioned_msgs", [])
+        if msgs:
+            chat_id_clean = str(M.chat_id).replace("-100", "")
+            text += "\n\n" "『<i>Tagged While Away</i>』 🔗"
+            for i, msg_id in enumerate(msgs, 1):
+                text += f"\n├ {i}. https://t.me/c/{chat_id_clean}/{msg_id}"
+        await self._client.bot.send_message(
+            chat_id=M.chat_id, text=text, parse_mode="HTML",reply_to_message_id=M.message_id
+        )
+        self._client.db.set_user_afk(M.sender.user_id, status=False)
+
+    async def _validate_access(self, M: Message, cmd: BaseCommand) -> bool:
+        cfg = cmd.config
+        if getattr(cfg, "OnlyChat", False) and M.chat_type == "private":
+            await M._client.bot.send_message(
+                chat_id=M.chat_id,
+                text=("『<i>Invalid Context</i>』 👥\n" "└ Group Only Command"),
+                parse_mode="HTML",
+            )
+            return False
+
+        if (
+            getattr(cfg, "DevOnly", False)
+            and M.sender.user_id not in self._client.config.mods
+        ):
+            await M._client.bot.send_message(
+                chat_id=M.chat_id,
+                text=("『<i>Access Denied</i>』 🚫\n" "└ Developer Only"),
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
+            )
+            return False
+
+        if getattr(cfg, "OnlyAdmin", False):
+            role, perms = await self._client.get_user_permissions(
+                M.chat_id, M.sender.user_id
+            )
+            if role not in ["administrator", "creator"]:
+                await M._client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=("『<i>Access Denied</i>』 ❌\n" "└ Admin Only"),
+                    reply_to_message_id=M.message_id,
+                )
+                return False
+
+            for req in getattr(cfg, "admin_permissions", []):
+                if perms and not perms.get(req):
+                    await M._client.bot.send_message(
+                        chat_id=M.chat_id,
+                        text=(
+                            "『<i>Permission Required</i>』 ⚠️\n"
+                            f"└ Missing Permission: {req}"
+                        ),
+                        reply_to_message_id=M.message_id,
+                        parse_mode="HTML",
+                    )
+                    return False
+        return True
+
+    async def _process_xp(self, M: Message, user: User, amount: int):
+        old_level_data = get_rank(user.xp)
+        new_xp = user.xp + amount
+        self._client.db.add_xp(M.sender.user_id, amount)
+        new_level_data = get_rank(new_xp)
+
+        if new_level_data["level"] > old_level_data["level"]:
+            await M._client.bot.send_message(
+                M.chat_id,
+                (
+                    "『<i>Level Up</i>』 🎉\n"
+                    f"├ User: {M.sender.mention}\n"
+                    f"└ Level: {new_level_data['level']}"
+                ),
+                parse_mode="HTML",
+            )

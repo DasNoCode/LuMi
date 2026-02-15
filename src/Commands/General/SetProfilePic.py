@@ -58,7 +58,7 @@ class Command(BaseCommand):
         try:
             avatar_url: str = self.client.utils.img_to_url(str(path))
 
-            self.client.db.set_user_profile_photo(
+            self.client.db.set_user_profile_url(
                 M.sender.user_id,
                 avatar_url,
             )

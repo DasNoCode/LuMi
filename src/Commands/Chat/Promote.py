@@ -26,6 +26,7 @@ class Command(BaseCommand):
                 },
                 "OnlyChat": True,
                 "OnlyAdmin": True,
+                "admin_permissions": ["can_promote_members"],
             },
         )
 
@@ -114,8 +115,12 @@ class Command(BaseCommand):
                 mode_text = "Limited Admin Rights"
 
         except BadRequest as e:
-            self.client.log.error(
-                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=error,
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
             return
 

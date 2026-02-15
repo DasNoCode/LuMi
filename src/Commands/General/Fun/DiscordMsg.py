@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from Libs import BaseCommand
 
 if TYPE_CHECKING:
+    from Models import User
     from Libs import SuperClient, Message
     from Handler import CommandHandler
 
@@ -27,47 +28,64 @@ class Command(BaseCommand):
         )
 
     async def exec(self, M: Message, context: dict[str, Any]) -> None:
-        flags: dict[str, str] = context.get("flags", {})
-        text: list[str] = context.get("text", [])
+        try:
 
-        reply = M.reply_to_message
-
-        if reply and reply.text:
-            content: str = reply.text.strip()
-            user = M.reply_to_user
-        else:
-            content = " ".join(text).strip()
-            user = (
-                M.reply_to_user
-                or (M.mentions[0] if M.mentions else None)
-                or M.sender
+            sender_db: User = self.client.db.get_user_by_user_id(
+                M.sender.user_id
             )
 
-        if not content:
+            if sender_db and sender_db.afk.get("status"):
+                await self.client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=(
+                        "『<i>AFK Status</i>』💤\n"
+                        "└ <i>Status</i>: You are already AFK"
+                    ),
+                    reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
+                )
+                return
+
+            raw_text: str = context.get("text", "").strip()
+
+            reason: str = " ".join(
+                word for word in raw_text.split()
+                if not word.startswith("@")
+            ).strip()
+
+            self.client.db.set_user_afk(
+                user_id=M.sender.user_id,
+                status=True,
+                reason=reason,
+            )
+
+            text: str = (
+                "『<i>AFK Enabled</i>』💤\n"
+                f"├ <i>User</i>: {M.sender.mention}\n"
+                + (
+                    f"└ <i>Reason</i>: {reason}"
+                    if reason
+                    else "└ <i>Reason</i>: No reason provided"
+                )
+            )
+
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text="❌ Please provide text or reply to a message.",
+                text=text,
                 reply_to_message_id=M.message_id,
+                parse_mode="HTML",
             )
-            return
+        except Exception as e:
 
-        username: str = user.user_name or user.user_full_name or "User"
-        avatar_url: str = await self.client.db.profile_to_url(user.user_id)
-
-        color: str = flags.get("color", "#ffcc99")
-        timestamp: str = datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-        api_url: str = (
-            "https://api.popcat.xyz/v2/discord-message"
-            f"?username={quote_plus(username)}"
-            f"&content={quote_plus(content)}"
-            f"&avatar={quote_plus(avatar_url)}"
-            f"&color={quote_plus(color)}"
-            f"&timestamp={quote_plus(timestamp)}"
-        )
-
-        await self.client.bot.send_photo(
-            chat_id=M.chat_id,
-            photo=api_url,
-            reply_to_message_id=M.message_id,
-        )
+            self.client.log.error(
+                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
+            )
+            await self.client.bot.send_message(
+                chat_id=M.chat_id,
+                text=(
+                    "『<i>Error</i>』⚠️\n"
+                    "└ <i>Status</i>: Something went wrong"
+                ),
+                reply_to_message_id=M.message_id,
+                parse_mode="HTML",
+            )

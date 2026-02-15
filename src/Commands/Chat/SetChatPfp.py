@@ -94,31 +94,18 @@ class Command(BaseCommand):
                     os.remove(path)
 
         except NetworkError as e:
-            self.client.log.error(
-                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
-            )
-
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "⚠️ <b>『Network Error』</b>\n"
-                    "└ <i>Telegram network issue. Please try again.</i>"
-                ),
+                text=error,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-
         except Exception as e:
-            self.client.log.error(
-                f"[ERROR] {e.__traceback__.tb_lineno}: {e}"
-            )
-
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "❌ <b>『Error』</b>\n"
-                    "└ <i>Something went wrong. Please try again later.</i>"
-                ),
+                text=error,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )

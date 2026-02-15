@@ -84,5 +84,11 @@ class Command(BaseCommand):
                     input_path.unlink(missing_ok=True)
                 if output_path:
                     output_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+            except Exception as e:
+                error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
+                await self.client.bot.send_message(
+                    chat_id=M.chat_id,
+                    text=error,
+                    reply_to_message_id=M.message_id,
+                    parse_mode="HTML",
+                )

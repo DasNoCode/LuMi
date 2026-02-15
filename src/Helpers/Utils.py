@@ -207,52 +207,101 @@ class Utils:
             return None
         
     @staticmethod
-    def image_to_webp(input_path: Path, output_path: Path) -> None:
-        STICKER_SIZE = "512:512"
+    def image_to_webp(input_path: str | Path, output_path: str | Path) -> Path:
+        input_path = Path(input_path)
+        output_path = Path(output_path)
+
         subprocess.run(
             [
                 "ffmpeg",
                 "-y",
-                "-i",
-                str(input_path),
-                "-vf",
-                f"scale={STICKER_SIZE}:force_original_aspect_ratio=decrease",
-                "-c:v",
-                "libwebp",
-                "-quality",
-                "90",
+                "-i", str(input_path),
+                "-vf", "scale=512:512:force_original_aspect_ratio=decrease",
+                "-c:v", "libwebp",
+                "-quality", "90",
                 str(output_path),
             ],
             check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-    
+
+        input_path.unlink(missing_ok=True)
+        return output_path
+
+
     @staticmethod
-    def video_to_webm(input_path: Path, output_path: Path) -> None:
-        STICKER_SIZE = "512:512"
+    def video_to_webm(input_path: str | Path, output_path: str | Path) -> Path:
+        input_path = Path(input_path)
+        output_path = Path(output_path)
+
         subprocess.run(
             [
                 "ffmpeg",
                 "-y",
-                "-i",
-                str(input_path),
-                "-t",
-                "3",
-                "-vf",
-                f"scale={STICKER_SIZE}:force_original_aspect_ratio=decrease,fps=30",
-                "-c:v",
-                "libvpx-vp9",
-                "-pix_fmt",
-                "yuv420p",
-                "-b:v",
-                "200k",
-                "-maxrate",
-                "200k",
-                "-bufsize",
-                "200k",
+                "-i", str(input_path),
+                "-t", "3",
+                "-vf", "scale=512:512:force_original_aspect_ratio=decrease,fps=30",
+                "-c:v", "libvpx-vp9",
+                "-pix_fmt", "yuv420p",
+                "-b:v", "200k",
+                "-maxrate", "200k",
+                "-bufsize", "200k",
                 "-an",
                 str(output_path),
             ],
-                    check=True,)
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        input_path.unlink(missing_ok=True)
+        return output_path
+
+
+    @staticmethod
+    def convert_webm_or_tgs_to_mp4(input_path: str | Path, output_path: str | Path) -> Path:
+        input_path = Path(input_path)
+        output_path = Path(output_path)
+
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", str(input_path),
+                "-movflags", "+faststart",
+                "-pix_fmt", "yuv420p",
+                "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                str(output_path),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        input_path.unlink(missing_ok=True)
+        return output_path
+
+
+    @staticmethod
+    def convert_webp_to_png(input_path: str | Path, output_path: str | Path) -> Path:
+        input_path = Path(input_path)
+        output_path = Path(output_path)
+
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", str(input_path),
+                str(output_path),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        input_path.unlink(missing_ok=True)
+        return output_path
 
     @staticmethod
     async def generate_guess_pokemon(
@@ -262,7 +311,6 @@ class Utils:
     ) -> bytes:
         title_text: Final[str] = "Who's That Pokémon?" if hidden else name
     
-        # Ensure title_text is just a "?" for the hidden state
         display_title = "?" if hidden else name 
     
         html: Final[str] = f"""

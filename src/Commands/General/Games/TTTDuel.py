@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import numpy as np
 from typing import Any, TYPE_CHECKING, Tuple, Optional
 
@@ -43,8 +44,12 @@ class Command(BaseCommand):
             return
 
         if M.sender.user_id == target.user_id:
+            text = (
+                "『<i>Invalid Challenge</i>』 ❌\n"
+                "└ You cannot challenge yourself"
+            )
             return await self.client.bot.send_message(
-                chat_id=M.chat_id, text="You can't challenge youself!"
+                chat_id=M.chat_id, text=text, parse_mode="HTML",
             )
 
         if any(
@@ -88,7 +93,10 @@ class Command(BaseCommand):
 
         await self.client.bot.send_message(
             chat_id=M.chat_id,
-            text="🎮 <b>『Tic Tac Toe Challenge』</b>\n└Accept or Reject.",
+            text=(
+                "『<i>Tic Tac Toe Challenge</i>』 🎮\n"
+                "└ Accept or Reject"
+            ),
             parse_mode="HTML",
             reply_markup=keyboard,
             reply_to_message_id=M.message_id,
@@ -108,9 +116,13 @@ class Command(BaseCommand):
                 return
 
             if M.sender.user_id != pending["player2"]:
+                text = (
+                    "『<i>Access Denied</i>』 ❌\n"
+                    "└ This game is not for you"
+                )
                 await self.client.bot.answer_callback_query(
                     callback_query_id=M.callback_id,
-                    text="This game isn't for you.",
+                    text=text,
                     show_alert=True,
                 )
                 return
@@ -121,7 +133,7 @@ class Command(BaseCommand):
                 await self.client.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=M.message_id,
-                    text="<b>『Challenge Rejected』</b>",
+                    text = "『<i>Challenge Rejected</i>』 ❌",
                     parse_mode="HTML",
                     reply_markup=None,
                 )
@@ -131,15 +143,15 @@ class Command(BaseCommand):
                 [
                     [
                         InlineKeyboardButton(
-                            "1 Round",
+                            "『1』",
                             callback_data="cmd:ttt rounds:1",
                         ),
                         InlineKeyboardButton(
-                            "2 Rounds",
+                            "『2』",
                             callback_data="cmd:ttt rounds:2",
                         ),
                         InlineKeyboardButton(
-                            "3 Rounds",
+                            "『3』",
                             callback_data="cmd:ttt rounds:3",
                         ),
                     ]
@@ -149,7 +161,7 @@ class Command(BaseCommand):
             await self.client.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=M.message_id,
-                text="<b>『Select Rounds』</b>",
+                text="『<i>Select Rounds</i>』",
                 parse_mode="HTML",
                 reply_markup=keyboard,
             )
@@ -231,9 +243,13 @@ class Command(BaseCommand):
         game = self.client.interaction_store[key]
 
         if M.sender.user_id != game["turn"]:
+            text = (
+                "『Invalid Turn』 ❌\n"
+                "└ Not your turn"
+            )
             await self.client.bot.answer_callback_query(
                 callback_query_id=M.callback_id,
-                text="Not your turn.",
+                text=text,
                 show_alert=True,
             )
             return
@@ -241,9 +257,13 @@ class Command(BaseCommand):
         r, c = int(flags["r"]), int(flags["c"])
 
         if game["board"][r][c] != 0:
+            text = (
+                "『Invalid Move』 ❌\n"
+                "└ Position already occupied"
+            )
             await self.client.bot.answer_callback_query(
                 callback_query_id=M.callback_id,
-                text="Position already occupied.",
+                text=text,
                 show_alert=True,
             )
             return
@@ -304,17 +324,17 @@ class Command(BaseCommand):
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "🏳 Defeated",
+                    "『Defeated』",
                     callback_data="cmd:ttt defeat:true",
                 )
             ]
         )
 
         text = (
-            "🎮 <b>『Tic Tac Toe』</b>\n"
-            f"├ Round: {game['current_round']}/{game['rounds']}\n"
-            f"├ Score: {game['score1']} - {game['score2']}\n"
-            f"└ Turn: {game['player2_name'] if game['player1']!= game['turn'] else game['player1_name']}"
+            "『<i>Tic Tac Toe</i>』 🎮\n"
+            f"├ <i>Round</i>: {game['current_round']}/{game['rounds']}\n"
+            f"├ <i>Score</i>: {game['score1']} - {game['score2']}\n"
+            f"└ <i>Turn</i>: {game['player2_name'] if game['player1']!= game['turn'] else game['player1_name']}"
         )
 
         await self.client.bot.edit_message_text(
@@ -341,7 +361,7 @@ class Command(BaseCommand):
             await self.client.bot.edit_message_text(
                 chat_id=key[1],
                 message_id=game["message_id"],
-                text="⏰ <b>『Turn Expired』</b>",
+                text="『<i>Turn Expired</i>』 ⏰ ",
                 parse_mode="HTML",
                 reply_markup=None,
             )
@@ -361,27 +381,46 @@ class Command(BaseCommand):
             return
 
         if defeated:
-
-            winner = (
+            loser_id: int = defeated
+            
+            winner_id: int = (
+                game["player2"]
+                if loser_id == game["player1"]
+                else game["player1"]
+            )
+            
+            loser_db = self.client.db.get_user_by_user_id(loser_id)
+            loser_xp: int = loser_db.xp if loser_db else 0
+            
+            transfer_xp: int = min(random.randint(1, 3), loser_xp)
+            
+            if transfer_xp > 0:
+                self.client.db.add_xp(user_id=loser_id, xp=-transfer_xp)
+                self.client.db.add_xp(user_id=winner_id, xp=transfer_xp)
+            
+            winner_name: str = (
                 game["player2_name"]
-                if defeated == game["player1"]
+                if loser_id == game["player1"]
                 else game["player1_name"]
             )
-            opponet = (
+            
+            loser_name: str = (
                 game["player1_name"]
-                if defeated == game["player1"]
+                if loser_id == game["player1"]
                 else game["player2_name"]
             )
+            
             text = (
-                "🏳 <b>『Surrender』</b>\n"
-                f"├ Player {opponet} surrendered\n"
-                f"└ Winner: {winner}"
+                "『<i>Surrender</i>』 🏳 \n"
+                f"├ <i>Loser</i>: {loser_name} (-{transfer_xp} XP)\n"
+                f"├ <i>Winner</i>: {winner_name} (+{transfer_xp} XP)\n"
+                f"└ <i>XP Transferred Successfully</i>"
             )
-
+            
         else:
 
             text = (
-                "🏆 <b>『Final Result』</b>\n"
+                "『<i>Final Result</i>』 🏆 \n"
                 f"├ {game['player1_name']}: {game['score1']}\n"
                 f"└ {game['player2_name']}: {game['score2']}"
             )

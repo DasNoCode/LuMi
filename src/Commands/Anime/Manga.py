@@ -88,13 +88,10 @@ class Command(BaseCommand):
             )
     
         except Exception as e:
+            error = self.client.utils.format_execution_error(e=e, file_filter=__file__)
             await self.client.bot.send_message(
                 chat_id=M.chat_id,
-                text=(
-                    "⚠️ <b>『Error』</b>\n"
-                    "└ <i>Failed to fetch manga information.</i>"
-                ),
+                text=error,
                 reply_to_message_id=M.message_id,
                 parse_mode="HTML",
             )
-            self.client.log.error(f"[ERROR] {e.__traceback__.tb_lineno}: {e}")
